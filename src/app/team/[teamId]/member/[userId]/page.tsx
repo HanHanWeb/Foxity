@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, BarChart3, Brain, MessageSquareQuote, Target, ChevronDown, Loader2, ScrollText } from "lucide-react";
+import { ArrowLeft, BarChart3, Brain, MessageSquareQuote, Target, ChevronDown, Loader2, ScrollText, Activity, Clock, MessageCircle, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AbilityRadar } from "@/components/AbilityRadar";
 import { useStore } from "@/store/useStore";
 import { mockProfiles } from "@/mock/data";
 import { hardSkillLabels, softSkillLabels, allSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType } from "@/types";
@@ -110,6 +111,48 @@ export default function MemberSummaryPage() {
         .slice(0, 3)
     : [];
 
+  // 对话统计数据
+  const chatStats = useMemo(() => {
+    if (chatHistory.length === 0) return null;
+    const userMsgs = chatHistory.filter((m) => m.role === "user");
+    const foxMsgs = chatHistory.filter((m) => m.role === "fox" || m.role === "assistant");
+    const totalChars = chatHistory.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+    const userChars = userMsgs.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+
+    // 计算对话时长（首条到末条）
+    let durationMin = 0;
+    if (chatHistory.length >= 2) {
+      const first = chatHistory[0].timestamp;
+      const last = chatHistory[chatHistory.length - 1].timestamp;
+      if (typeof first === "number" && typeof last === "number") {
+        durationMin = Math.round((last - first) / 60000);
+      } else if (typeof first === "string" && typeof last === "string") {
+        durationMin = Math.round((new Date(last).getTime() - new Date(first).getTime()) / 60000);
+      }
+    }
+
+    return {
+      total: chatHistory.length,
+      userCount: userMsgs.length,
+      foxCount: foxMsgs.length,
+      totalChars,
+      userChars,
+      avgUserChars: userMsgs.length > 0 ? Math.round(userChars / userMsgs.length) : 0,
+      durationMin,
+    };
+  }, [chatHistory]);
+
+  // 雷达图数据
+  const radarData = useMemo(() => {
+    if (!leaderSummary) return [];
+    return leaderSummary.hard_skills.map((s) => ({
+      ability: s.dimension,
+      label: hardSkillLabels[s.dimension as keyof typeof hardSkillLabels] || s.dimension,
+      score: s.score,
+      verified: s.status,
+    }));
+  }, [leaderSummary]);
+
   return (
     <main className="min-h-screen bg-[#fbf7ef] pb-12">
       <header className="sticky top-0 z-30 border-b border-fox-gray-light bg-white/80 backdrop-blur">
@@ -121,7 +164,7 @@ export default function MemberSummaryPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         {/* 成员头部 */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <h1 className="text-3xl font-bold text-fox-navy">{profile.user_name}</h1>
@@ -164,6 +207,66 @@ export default function MemberSummaryPage() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="mt-8 space-y-6"
           >
+            {/* AI 可视化分析总览 */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* 能力雷达图 */}
+              {radarData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-fox-orange" />
+                      能力雷达图
+                    </CardTitle>
+                    <CardDescription>AI 分析的五大硬技能分布</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex justify-center">
+                    <AbilityRadar data={radarData} size={260} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 对话统计 */}
+              {chatStats && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-fox-navy" />
+                      对话数据统计
+                    </CardTitle>
+                    <CardDescription>基于完整对话记录的分析</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <StatBlock
+                        icon={<MessageCircle className="h-4 w-4 text-fox-orange" />}
+                        label="总消息数"
+                        value={`${chatStats.total}`}
+                        sub={`用户 ${chatStats.userCount} · Foxity ${chatStats.foxCount}`}
+                      />
+                      <StatBlock
+                        icon={<Clock className="h-4 w-4 text-fox-mint" />}
+                        label="对话时长"
+                        value={chatStats.durationMin > 0 ? `${chatStats.durationMin} 分钟` : "—"}
+                        sub="首条至末条"
+                      />
+                      <StatBlock
+                        icon={<Activity className="h-4 w-4 text-fox-navy" />}
+                        label="用户发言"
+                        value={`${chatStats.userChars}`}
+                        sub="总字数"
+                      />
+                      <StatBlock
+                        icon={<TrendingUp className="h-4 w-4 text-fox-coral" />}
+                        label="平均回复"
+                        value={`${chatStats.avgUserChars}`}
+                        sub="字/条"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
             {/* 硬技能评估 */}
             <Card>
               <CardHeader>
@@ -317,6 +420,19 @@ function SkillAssessmentItem({ skill }: { skill: LeaderSkillAssessment }) {
       </div>
       <p className="mt-2 text-sm text-fox-navy">{skill.summary}</p>
       <p className="mt-1 text-xs text-fox-gray">证据：{skill.evidence}</p>
+    </div>
+  );
+}
+
+function StatBlock({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-xl border border-fox-gray-light bg-fox-cream/30 p-3">
+      <div className="mb-1 flex items-center gap-1.5 text-xs text-fox-gray">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="text-xl font-bold text-fox-navy">{value}</p>
+      <p className="mt-0.5 text-xs text-fox-gray">{sub}</p>
     </div>
   );
 }

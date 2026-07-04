@@ -16,11 +16,12 @@ export async function GET() {
 
     const db = getDb();
 
-    // 我创建的团队
+    // 我创建的团队（含成员数）
     const ownedRes = await db.execute({
-      sql: `SELECT team_id, team_name, competition_type, organizer_name, created_at
-            FROM teams WHERE owner_user_id = ?
-            ORDER BY created_at DESC`,
+      sql: `SELECT t.team_id, t.team_name, t.competition_type, t.organizer_name, t.created_at,
+                   (SELECT COUNT(*) FROM profiles p WHERE p.team_id = t.team_id) AS member_count
+            FROM teams t WHERE t.owner_user_id = ?
+            ORDER BY t.created_at DESC`,
       args: [userId],
     });
     const owned = ownedRes.rows.map((row) => ({
@@ -29,11 +30,13 @@ export async function GET() {
       competition_type: row.competition_type,
       organizer_name: row.organizer_name,
       created_at: row.created_at,
+      member_count: row.member_count,
     }));
 
     // 我加入的团队（通过 profiles 表关联，排除自己创建的）
     const joinedRes = await db.execute({
-      sql: `SELECT t.team_id, t.team_name, t.competition_type, t.organizer_name, t.created_at
+      sql: `SELECT t.team_id, t.team_name, t.competition_type, t.organizer_name, t.created_at, p.timestamp AS joined_at,
+                   (SELECT COUNT(*) FROM profiles p2 WHERE p2.team_id = t.team_id) AS member_count
             FROM profiles p
             JOIN teams t ON p.team_id = t.team_id
             WHERE p.user_id = ? AND (t.owner_user_id IS NULL OR t.owner_user_id != ?)
@@ -46,6 +49,8 @@ export async function GET() {
       competition_type: row.competition_type,
       organizer_name: row.organizer_name,
       created_at: row.created_at,
+      joined_at: row.joined_at,
+      member_count: row.member_count,
     }));
 
     return NextResponse.json({ owned, joined });

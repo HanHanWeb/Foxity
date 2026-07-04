@@ -72,3 +72,49 @@ export async function GET(
     );
   }
 }
+
+// 删除团队（队长）或退出团队（成员）
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  try {
+    const { teamId } = await params;
+    const userId = await getUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const db = getDb();
+
+    // 查团队
+    const teamRes = await db.execute({
+      sql: `SELECT owner_user_id FROM teams WHERE team_id = ?`,
+      args: [teamId],
+    });
+    if (teamRes.rows.length === 0) {
+      return NextResponse.json({ error: "团队不存在" }, { status: 404 });
+    }
+
+    const ownerId = teamRes.rows[0].owner_user_id as string | null;
+
+    if (ownerId === userId) {
+      // 队长删除团队：删除所有关联数据
+      await db.execute({ sql: `DELETE FROM chat_history WHERE team_id = ?`, args: [teamId] });
+      await db.execute({ sql: `DELETE FROM profiles WHERE team_id = ?`, args: [teamId] });
+      await db.execute({ sql: `DELETE FROM teams WHERE team_id = ?`, args: [teamId] });
+      return NextResponse.json({ action: "deleted" });
+    } else {
+      // 成员退出团队：删除自己的 profile 和聊天记录
+      await db.execute({ sql: `DELETE FROM chat_history WHERE user_id = ? AND team_id = ?`, args: [userId, teamId] });
+      await db.execute({ sql: `DELETE FROM profiles WHERE user_id = ? AND team_id = ?`, args: [userId, teamId] });
+      return NextResponse.json({ action: "left" });
+    }
+  } catch (error: any) {
+    console.error("Delete/leave team error:", error);
+    return NextResponse.json(
+      { error: "操作失败", details: error?.message },
+      { status: 500 }
+    );
+  }
+}

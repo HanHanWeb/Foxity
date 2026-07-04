@@ -67,9 +67,19 @@ export function AbilityBarList({ profile }: AbilityBarListProps) {
                   </ul>
                 </div>
                 <div className="mt-3">
-                  <p className="text-xs text-fox-gray-light">
-                    证据事件：{ability.evidence_events.length > 0 ? `${ability.evidence_events.length} 条对话记录` : "暂无"}
-                  </p>
+                  <h4 className="mb-2 text-sm font-semibold text-fox-navy">证据事件</h4>
+                  {ability.evidence_events.length > 0 ? (
+                    <ul className="space-y-2">
+                      {ability.evidence_events.map((evidence, i) => (
+                        <li key={i} className="rounded-lg bg-fox-cream/40 px-3 py-2 text-sm text-fox-navy">
+                          <span className="mr-1.5 text-fox-orange">▸</span>
+                          {evidence}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-fox-gray">暂无证据</p>
+                  )}
                 </div>
               </motion.div>
             )}

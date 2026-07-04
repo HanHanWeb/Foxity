@@ -74,7 +74,7 @@ export default function TeamDashboardPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <div className="mb-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>

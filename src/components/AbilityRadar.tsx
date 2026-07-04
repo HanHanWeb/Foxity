@@ -21,21 +21,27 @@ interface AbilityRadarItem {
 interface AbilityRadarProps {
   data: AbilityRadarItem[];
   size?: number;
+  fullWidth?: boolean;
 }
 
-export function AbilityRadar({ data, size = 280 }: AbilityRadarProps) {
+export function AbilityRadar({ data, size = 280, fullWidth = false }: AbilityRadarProps) {
   const chartData = data.map((item) => ({
     label: item.label,
     score: item.verified === "untested" ? 0 : item.score,
     fullMark: 10,
   }));
 
+  const containerStyle = fullWidth
+    ? { width: "100%", height: 300 }
+    : { width: size, height: size };
+
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
-      style={{ width: size, height: size }}
+      style={containerStyle}
+      className="outline-none [&_svg]:outline-none [&_svg:focus]:outline-none [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none"
     >
       <ResponsiveContainer width="100%" height="100%">
         <RechartsRadarChart data={chartData} outerRadius="75%">
@@ -52,6 +58,7 @@ export function AbilityRadar({ data, size = 280 }: AbilityRadarProps) {
             fill="#FF9F4D"
             fillOpacity={0.35}
             strokeWidth={2}
+            isAnimationActive={false}
           />
           <Tooltip
             contentStyle={{
@@ -59,7 +66,10 @@ export function AbilityRadar({ data, size = 280 }: AbilityRadarProps) {
               border: "1px solid #E5E5E5",
               fontSize: "12px",
               boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+              outline: "none",
             }}
+            wrapperStyle={{ outline: "none" }}
+            cursor={false}
             formatter={(value) => [`${value}/10`, "分数"]}
           />
         </RechartsRadarChart>

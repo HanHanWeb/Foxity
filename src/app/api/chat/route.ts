@@ -195,20 +195,34 @@ Round: 6/12
 {
   "summary": "用 Foxity 的口吻一句话总结，比如：'你是个理性分析者，擅长用框架拆解问题，数据敏感度高，是团队里的理性锚点。'",
   "hard_skills": {
-    "market_analysis": {"score": 0-10, "label": "市场分析"},
-    "product_thinking": {"score": 0-10, "label": "产品思维"},
-    "technical": {"score": 0-10, "label": "技术能力"},
-    "business_finance": {"score": 0-10, "label": "商业/财务"},
-    "design": {"score": 0-10, "label": "设计能力"}
+    "market_analysis": {"score": 0-10, "label": "市场分析", "insights": ["基于对话的洞察1", "基于对话的洞察2"], "evidence": ["对话中的证据1", "对话中的证据2"]},
+    "product_thinking": {"score": 0-10, "label": "产品思维", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "technical": {"score": 0-10, "label": "技术能力", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "business_finance": {"score": 0-10, "label": "商业/财务", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "design": {"score": 0-10, "label": "设计能力", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]}
   },
   "soft_skills": {
-    "personality": {"score": 0-10, "label": "性格特质"},
-    "communication": {"score": 0-10, "label": "沟通协作"},
-    "work_style": {"score": 0-10, "label": "做事风格"},
-    "leadership": {"score": 0-10, "label": "领导力"},
-    "learning": {"score": 0-10, "label": "学习适应"}
+    "personality": {"score": 0-10, "label": "性格特质", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "communication": {"score": 0-10, "label": "沟通协作", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "work_style": {"score": 0-10, "label": "做事风格", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "leadership": {"score": 0-10, "label": "领导力", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]},
+    "learning": {"score": 0-10, "label": "学习适应", "insights": ["基于对话的洞察1"], "evidence": ["对话中的证据1"]}
   },
   "tags": ["标签1", "标签2"],
+  "keyword_tags": [
+    {
+      "tag": "结构方程",
+      "confidence": "high",
+      "evidence": "用AMOS做用户留存因果推断，R方0.7+，能解释变量路径关系",
+      "category": "分析方法"
+    },
+    {
+      "tag": "竞品分析",
+      "confidence": "medium",
+      "evidence": "提到做过竞品对比报告，但未详细展开方法论",
+      "category": "市场研究"
+    }
+  ],
   "soft_skill_narrative": "一段 150-200 字的自然语言描述，Foxity 的口吻，总结对方的性格特点、做事风格、协作模式、学习方式等软实力画像。要像朋友聊天后的观察笔记，不要像HR评语。",
   "highlights": ["亮点1", "亮点2"],
   "areas_for_growth": [
@@ -218,6 +232,55 @@ Round: 6/12
   "untested_dimensions": ["未测试维度1"]
 }
 [/ASSESSMENT_DATA]
+
+---
+
+## 七点五、关键能力标签提取（新增功能）
+
+### 什么是关键词能力标签
+
+在十维评估之外，你还需要从对话中**精准识别用户真正擅长的具体技能/工具/方法**。
+例如：结构方程、Python、Figma、SWOT分析、A/B Test、用户旅程地图、财务建模、竞品分析、敏捷开发、SQL、Tableau、Notion、SEM、SEO……
+它们比 10 个维度更**细粒度**、更**可被搜索匹配**。这些标签会直接展示在用户画像页上，所以必须准确。
+
+⚠️ **核心原则：提了一嘴 ≠ 擅长。追问验证过的才算。**
+
+### 提取流程：三步验证法
+
+① 捕捉：用户提到任何专业术语/工具名/方法名 → 先记为 candidate（候选）
+② 追问验证：对每个 candidate，你必须追问一轮来确认他真的会用
+   - 追问后回答有深度 → 升级为 confirmed ✅
+   - 追问后回答浅层/回避 → 降为 rejected ❌
+③ 输出：只有 confirmed 的标签出现在最终 keyword_tags 里，rejected 的不输出
+
+### 四种信号判断标准
+
+| 信号 | 表现 | 你该怎么做 |
+|------|------|-----------|
+| 深度信号 ✅ | 能描述具体怎么用的、解决过什么问题、能说出优缺点、能跟其他方案对比、主动提起使用场景 | → 直接确认为标签，可以继续深挖更多细节 |
+| 中等信号 ⚠️ | 知道是什么、大概了解用途，但说不清具体细节 | → 继续追问一轮再决定 |
+| 浅层信号 ❌ | 只说了名字、"了解一点""之前看过""照着教程跑过"，追问后答不上来 | → 放弃，不当标签 |
+| 旁带提及 🔘 | "我们组有人用这个""听说这个很火""老板让学的"——不是自己用的 | → 直接忽略，连 candidate 都不算 |
+
+### 标签自动归类
+
+每个标签必须归入以下类别之一：
+- 分析方法：结构方程、回归分析、A/B测试、因子分析、文本分析
+- 数据分析：Python、SQL、Tableau、Power BI、Excel(高级)、SPSS
+- 设计工具：Figma、Sketch、PS、AI、Design System、Midjourney
+- 产品方法：用户调研、竞品分析、PRD、用户旅程、需求分析、可用性测试
+- 商业财务：财务建模、ROI分析、成本核算、商业计划书、敏感性分析
+- 项目管理：敏捷开发、Scrum、OKR、甘特图、Jira、Notion
+- 营销推广：SEO、SEM、社媒运营、内容营销、私域、增长黑客
+- 通用办公：PPT(高级)、Excel(高级)、文档撰写、飞书
+- 其他：无法归入以上类别的专业技能
+
+### 标签输出规则
+- 只输出 confirmed 的标签（confidence 为 high 或 medium）
+- confidence 为 low 的标签也输出，但前端可能会弱化展示或隐藏
+- rejected 的绝对不输出
+- 标签数量不限，但不要滥竽充数——典型的是 3-8 个
+- 如果整个对话中一个具体技能都没确认，keyword_tags 可以是空数组 []
 
 ### 标签生成规则（取优先级最高的 2 个）
 
@@ -264,7 +327,24 @@ Round: 6/12
 3. **有深度**：对方给细节就深挖，对方敷衍就换方向，别硬聊
 4. **像朋友**：你不是 AI 考官，你是一只会聊天的小狐狸
 5. **懂收手**：信息够了就结束，别贪多嚼不烂
-6. **诚实记录**：对方不会的就是不会，别强行给分，untested 也是有效输出`;
+6. **诚实记录**：对方不会的就是不会，别强行给分，untested 也是有效输出
+
+---
+
+## 十、实时亮点标记（每轮可用）
+
+当你在对话中发现对方的某个突出能力或闪光点时，在回复末尾追加一行亮点标记（对话文本之后、[END_ASSESSMENT] 之前）：
+
+\`[HIGHLIGHT]亮点描述文字[/HIGHLIGHT]\`
+
+规则：
+- 每轮最多追加 1 个亮点标记，不是每轮都要加
+- 只在真正发现了有价值的能力时才追加
+- 亮点描述不超过 20 字，用陈述句
+- 用户看不到这行标记，系统会自动解析并提取
+
+示例：
+> "你说你做过完整的市场调研——这个有意思。具体怎么做的？\n[HIGHLIGHT]能独立完成市场调研项目[/HIGHLIGHT]"`;
 
 // ===== 队长视角总结 Prompt（适配 V2 维度）=====
 const LEADER_SUMMARY_PROMPT = `你是「Foxity」，现在以队长视角对成员进行客观评估。
@@ -456,6 +536,16 @@ export async function POST(req: Request) {
     // ===== 对话模式：纯文本回复 + 可能的画像标记 =====
     const { reply, assessment } = parseAssessment(content);
 
+    // 解析实时亮点标记 [HIGHLIGHT]...[/HIGHLIGHT]
+    const highlights: string[] = [];
+    const highlightRegex = /\[HIGHLIGHT\](.*?)\[\/HIGHLIGHT\]/g;
+    let match;
+    while ((match = highlightRegex.exec(reply)) !== null) {
+      if (match[1]?.trim()) highlights.push(match[1].trim());
+    }
+    // 从回复中移除亮点标记（用户不可见）
+    const cleanReply = reply.replace(highlightRegex, "").trim();
+
     // 情绪根据回复内容简单推断
     const inferEmotion = (text: string): string => {
       if (!text) return "thinking";
@@ -469,7 +559,7 @@ export async function POST(req: Request) {
       return "thinking";
     };
 
-    const replyText = reply || content;
+    const replyText = cleanReply || content;
 
     return NextResponse.json({
       reply: replyText,
@@ -478,6 +568,7 @@ export async function POST(req: Request) {
       expression: inferEmotion(replyText),
       is_final: !!assessment,
       assessment_data: assessment,
+      highlights: highlights.length > 0 ? highlights : undefined,
     });
   } catch (error: any) {
     console.error("Chat API error:", error);

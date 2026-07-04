@@ -72,6 +72,15 @@ export type SkillScores = Record<HardSkillKey, number> & Partial<Record<SoftSkil
 export interface V2SkillScore {
   score: number;
   label: string;
+  insights?: string[];   // 该维度的洞察描述
+  evidence?: string[];  // 该维度的证据事件（来自对话）
+}
+
+export interface V2KeywordTag {
+  tag: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string;
+  category: string;
 }
 
 export interface V2AssessmentData {
@@ -79,6 +88,7 @@ export interface V2AssessmentData {
   hard_skills: Record<string, V2SkillScore>;
   soft_skills: Record<string, V2SkillScore>;
   tags: string[];
+  keyword_tags?: V2KeywordTag[];
   soft_skill_narrative: string;
   highlights: string[];
   areas_for_growth: { priority: string; title: string; detail: string }[];
@@ -100,6 +110,7 @@ export interface UserProfile {
   behavior_patterns?: BehaviorPatterns;
   growth_suggestions: GrowthSuggestion[];
   tags?: string[];
+  keyword_tags?: V2KeywordTag[];
   soft_skill_narrative?: string;
   highlights?: string[];
   leader_summary?: LeaderSummary;
@@ -187,6 +198,7 @@ export interface AIResponse {
   is_final?: boolean;         // 是否包含画像输出
   profile_data?: Partial<UserProfile>;  // 解析后的画像
   assessment_data?: V2AssessmentData;   // V2 原始画像
+  highlights?: string[];              // 实时亮点
 }
 
 export interface DimensionMeta {

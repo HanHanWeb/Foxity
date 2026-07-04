@@ -278,15 +278,15 @@ export const useStore = create<StoreState>((set, get) => ({
     const current = get().currentProfile ?? getInitialProfile();
     const newAbilities = { ...current.abilities };
 
-    // 写入硬技能分数
+    // 写入硬技能分数、洞察和证据
     Object.entries(data.hard_skills || {}).forEach(([key, val]) => {
       const hk = hardSkillKeyMap[key];
       if (hk && val) {
         newAbilities[hk] = {
           score: val.score,
           verification_status: val.score > 0 ? "verified" : "untested",
-          insights: [],
-          evidence_events: [],
+          insights: val.insights || [],
+          evidence_events: val.evidence || [],
         };
       }
     });
@@ -297,6 +297,7 @@ export const useStore = create<StoreState>((set, get) => ({
       overview_summary: data.summary || current.overview_summary,
       abilities: newAbilities,
       tags: data.tags,
+      keyword_tags: data.keyword_tags,
       soft_skill_narrative: data.soft_skill_narrative,
       highlights: data.highlights,
       growth_suggestions: (data.areas_for_growth || []).map((g) => ({

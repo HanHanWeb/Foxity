@@ -33,6 +33,7 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
       expression: emotion,
       is_final: data.is_final || false,
       assessment_data: data.assessment_data || undefined,
+      highlights: data.highlights || undefined,
     };
   } catch (error) {
     console.error("sendToAI error:", error);

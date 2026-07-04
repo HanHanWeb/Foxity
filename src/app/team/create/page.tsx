@@ -52,7 +52,7 @@ export default function CreateTeamPage() {
                   <Label htmlFor="teamName">团队名称</Label>
                   <Input
                     id="teamName"
-                    placeholder="例：挑战杯-智慧农业项目组"
+                    placeholder="请输入团队名称"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     required

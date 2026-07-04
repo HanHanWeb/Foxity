@@ -46,19 +46,19 @@ export default function HomePage() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 size="lg"
-                onClick={() => router.push("/team/create")}
-                className="h-12 rounded-full bg-[#425a7a] px-16 text-base font-semibold text-white shadow-lg shadow-[#425a7a]/15 hover:bg-[#344866]"
+                onClick={() => setOpen(true)}
+                className="h-12 min-w-[240px] rounded-full bg-[#425a7a] px-16 text-base font-semibold text-white shadow-lg shadow-[#425a7a]/15 hover:bg-[#344866]"
               >
-                创建团队
+                加入团队
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => setOpen(true)}
+                onClick={() => router.push("/team/create")}
                 className="h-12 rounded-full border-[#d9dee8] bg-white/70 px-8 text-base font-semibold text-[#425a7a] shadow-sm hover:bg-white"
               >
-                加入团队
+                创建团队
               </Button>
             </div>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyGeetest } from "@/lib/geetest";
-import { createCode } from "@/lib/email-code";
+import { generateCode, signCode } from "@/lib/email-code";
 import { sendMail } from "@/lib/mail";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,9 +38,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. 生成验证码并发送邮件（邮箱统一小写存储）
+    // 2. 生成验证码并签名（邮箱统一小写存储）
     const normalizedEmail = email.trim().toLowerCase();
-    const code = await createCode(normalizedEmail);
+    const code = generateCode();
+    const { token } = signCode(normalizedEmail, code);
+
     try {
       await sendMail({
         to: normalizedEmail,
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, message: "验证码已发送" });
+    return NextResponse.json({ ok: true, message: "验证码已发送", token });
   } catch (error: any) {
     console.error("Send-code error:", error);
     return NextResponse.json(

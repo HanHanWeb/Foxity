@@ -37,6 +37,7 @@ export default function AuthPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
+  const [codeToken, setCodeToken] = useState("");
 
   // 验证码倒计时
   const [codeCountdown, setCodeCountdown] = useState(0);
@@ -123,6 +124,7 @@ export default function AuthPage() {
           email: regEmail.trim(),
           code: regCode.trim(),
           password: regPassword,
+          token: codeToken,
         }),
       });
       const data = await res.json();
@@ -198,6 +200,7 @@ export default function AuthPage() {
         setCodeMessage(data.error || "验证码发送失败");
         return;
       }
+      setCodeToken(data.token || "");
       setCodeMessage("验证码已发送，请查收邮件");
       // 开始 60s 倒计时
       setCodeCountdown(60);

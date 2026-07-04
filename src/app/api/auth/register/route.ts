@@ -3,23 +3,25 @@ import { getDb } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { verifyCode } from "@/lib/email-code";
+import { verifyCodeToken } from "@/lib/email-code";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
   try {
-    const { name, email, code, password } = await req.json();
+    const { name, email, code, password, token } = await req.json();
 
     if (
       !name ||
       !email ||
       !code ||
       !password ||
+      !token ||
       typeof name !== "string" ||
       typeof email !== "string" ||
       typeof code !== "string" ||
-      typeof password !== "string"
+      typeof password !== "string" ||
+      typeof token !== "string"
     ) {
       return NextResponse.json(
         { error: "姓名、邮箱、验证码和密码不能为空" },
@@ -50,8 +52,8 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 校验邮箱验证码
-    if (!(await verifyCode(normalizedEmail, code.trim()))) {
+    // 校验验证码 token（无状态 HMAC 签名）
+    if (!verifyCodeToken(token, normalizedEmail, code.trim())) {
       return NextResponse.json(
         { error: "验证码错误或已过期" },
         { status: 400 }

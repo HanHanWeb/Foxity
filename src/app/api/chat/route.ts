@@ -70,12 +70,17 @@ export async function POST(req: Request) {
   try {
     const { messages, user_name } = await req.json();
 
-    const formattedMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...messages.map((msg: any) => ({
+    // 清理历史消息：过滤掉空内容，避免污染模型上下文
+    const cleanedMessages = (messages || [])
+      .filter((msg: any) => msg && typeof msg.content === "string" && msg.content.trim().length > 0)
+      .map((msg: any) => ({
         role: msg.role === "fox" ? "assistant" : "user",
         content: msg.content,
-      })),
+      }));
+
+    const formattedMessages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...cleanedMessages,
     ];
 
     const response = await fetch(`${BASE_URL}/chat/completions`, {
@@ -146,9 +151,18 @@ export async function POST(req: Request) {
 
     const replyText = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
 
+    // 空回复时，根据对话轮次生成能推进对话的 fallback
+    const fallbackReplies = [
+      "嗯，我刚刚在想你说的话。能再具体说说吗？比如举个你做过的项目的例子？",
+      "有意思，我想多了解一点。你刚才说的那件事，你具体是怎么做的？",
+      "好的，我记下了。我们换个角度聊聊——你觉得自己在团队里通常扮演什么角色？",
+      "嗯哼，明白了。那你平时遇到压力大的情况，一般怎么处理？",
+    ];
+    const fallbackIndex = cleanedMessages.filter((m: any) => m.role === "user").length % fallbackReplies.length;
+
     return NextResponse.json({
-      reply: replyText || "嗯？我好像没听清，再说一遍？",
-      emotion: parsed.emotion || "smile",
+      reply: replyText || fallbackReplies[fallbackIndex],
+      emotion: parsed.emotion || "thinking",
       phase: parsed.phase || "background",
       scores_delta: parsed.scores_delta || {},
       event: parsed.event || null,

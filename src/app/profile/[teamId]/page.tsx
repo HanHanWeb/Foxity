@@ -95,7 +95,9 @@ export default function ProfilePage() {
   }, [params.teamId, currentTeam]);
 
   // 优先用内存中的 currentProfile（刚测评完），否则用数据库加载的，最后 fallback mock
-  const data = currentProfile ?? dbProfile ?? mockProfile;
+  // 姓名优先用登录用户的真实姓名
+  const rawData = currentProfile ?? dbProfile ?? mockProfile;
+  const data = { ...rawData, user_name: user?.name || rawData.user_name };
 
   const radarData = (Object.keys(data.abilities) as HardSkillKey[]).map((key) => ({
     ability: key,

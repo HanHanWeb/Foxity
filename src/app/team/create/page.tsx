@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Users, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Users, Loader2, Mail, X, Send } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,10 @@ export default function CreateTeamPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -49,6 +53,63 @@ export default function CreateTeamPage() {
   };
 
   const inviteLink = teamCode ? `${mounted ? window.location.origin : ""}/team/${teamCode}/join` : "";
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const addEmail = () => {
+    const trimmed = emailInput.trim().toLowerCase();
+    if (!trimmed) return;
+    if (!EMAIL_RE.test(trimmed)) {
+      setInviteMsg({ type: "error", text: "邮箱格式不正确" });
+      return;
+    }
+    if (inviteEmails.includes(trimmed)) {
+      setInviteMsg({ type: "error", text: "该邮箱已添加" });
+      return;
+    }
+    setInviteEmails([...inviteEmails, trimmed]);
+    setEmailInput("");
+    setInviteMsg(null);
+  };
+
+  const removeEmail = (email: string) => {
+    setInviteEmails(inviteEmails.filter((e) => e !== email));
+  };
+
+  const handleEmailKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addEmail();
+    }
+  };
+
+  const sendInvites = async () => {
+    if (inviteEmails.length === 0 || !teamCode) return;
+    setSending(true);
+    setInviteMsg(null);
+    try {
+      const res = await fetch("/api/teams/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team_id: teamCode,
+          emails: inviteEmails,
+          inviterName: user?.name,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setInviteMsg({ type: "error", text: data.error || "发送失败" });
+        return;
+      }
+      setInviteMsg({ type: "success", text: `已成功向 ${data.sent} 位队友发送邀请邮件` });
+      setInviteEmails([]);
+    } catch {
+      setInviteMsg({ type: "error", text: "网络错误，请重试" });
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -118,6 +179,75 @@ export default function CreateTeamPage() {
                     <Input readOnly value={inviteLink} className="bg-fox-gray-bg" />
                     <CopyButton value={inviteLink} size="icon" />
                   </div>
+                </div>
+
+                {/* 邮件邀请 */}
+                <div className="space-y-3 rounded-xl border border-fox-gray-light bg-fox-gray-bg/30 p-4">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-fox-orange" />
+                    <Label className="cursor-pointer">邮件邀请队友</Label>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="输入队友邮箱，回车或逗号添加"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      onKeyDown={handleEmailKeyDown}
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={addEmail}>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {inviteEmails.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {inviteEmails.map((email) => (
+                        <span
+                          key={email}
+                          className="inline-flex items-center gap-1 rounded-full bg-fox-orange/10 px-3 py-1 text-sm text-fox-navy"
+                        >
+                          {email}
+                          <button
+                            type="button"
+                            onClick={() => removeEmail(email)}
+                            className="text-fox-gray hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {inviteMsg && (
+                    <p className={`text-sm ${inviteMsg.type === "success" ? "text-fox-mint" : "text-red-500"}`}>
+                      {inviteMsg.text}
+                    </p>
+                  )}
+
+                  {inviteEmails.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      disabled={sending}
+                      onClick={sendInvites}
+                    >
+                      {sending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          发送中...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          发送邀请邮件（{inviteEmails.length} 人）
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 <div className="grid gap-2 pt-2 md:grid-cols-2">

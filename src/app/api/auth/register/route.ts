@@ -78,17 +78,26 @@ export async function POST(req: Request) {
     const user_id = crypto.randomUUID();
     const password_hash = await bcrypt.hash(password, 10);
     const created_at = new Date().toISOString();
+    const trimmedName = name.trim();
 
+    // 先检查表有哪些列，动态拼接 INSERT
+    const colsRes = await db.execute({ sql: `PRAGMA table_info(users)` });
+    const colNames = (colsRes.rows as unknown as { name: string }[]).map((r) => r.name);
+    const insertCols: string[] = ["user_id", "password_hash", "email", "created_at"];
+    const insertArgs: (string | undefined)[] = [user_id, password_hash, normalizedEmail, created_at];
+    if (colNames.includes("username")) {
+      insertCols.push("username");
+      insertArgs.push(trimmedName);
+    }
+    if (colNames.includes("display_name")) {
+      insertCols.push("display_name");
+      insertArgs.push(trimmedName);
+    }
+
+    const placeholders = insertCols.map(() => "?").join(", ");
     await db.execute({
-      sql: `INSERT INTO users (user_id, username, password_hash, email, created_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [
-        user_id,
-        name.trim(),
-        password_hash,
-        normalizedEmail,
-        created_at,
-      ],
+      sql: `INSERT INTO users (${insertCols.join(", ")}) VALUES (${placeholders})`,
+      args: insertArgs as string[],
     });
 
     await createSession(user_id);

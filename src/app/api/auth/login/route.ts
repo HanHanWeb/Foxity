@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const db = getDb();
 
     const result = await db.execute({
-      sql: `SELECT user_id, username, password_hash, email
+      sql: `SELECT user_id, display_name, password_hash, email
             FROM users WHERE email = ?`,
       args: [email.trim().toLowerCase()],
     });
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       user_id: row.user_id,
-      name: row.username,
+      name: row.display_name,
       email: row.email,
     });
   } catch (error: any) {

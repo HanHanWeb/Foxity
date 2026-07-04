@@ -16,7 +16,7 @@ export async function GET() {
     const db = getDb();
 
     const result = await db.execute({
-      sql: `SELECT user_id, username, email
+      sql: `SELECT user_id, display_name, email
             FROM users WHERE user_id = ?`,
       args: [userId],
     });
@@ -31,7 +31,7 @@ export async function GET() {
     const row = result.rows[0];
     return NextResponse.json({
       user_id: row.user_id,
-      name: row.username,
+      name: row.display_name,
       email: row.email,
     });
   } catch (error: any) {

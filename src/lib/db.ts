@@ -22,7 +22,7 @@ const EXPECTED_COLUMNS: Record<string, string[]> = {
   teams: ["team_id", "team_name", "competition_type", "organizer_name", "owner_user_id", "created_at"],
   profiles: ["user_id", "user_name", "team_id", "timestamp", "data"],
   chat_history: ["id", "user_id", "team_id", "role", "content", "emotion", "created_at"],
-  users: ["user_id", "username", "password_hash", "email", "created_at"],
+  users: ["user_id", "display_name", "password_hash", "email", "created_at"],
   sessions: ["token", "user_id", "expires_at", "created_at"],
 };
 
@@ -83,7 +83,7 @@ const CREATE_CHAT_HISTORY = `CREATE TABLE IF NOT EXISTS chat_history (
 
 const CREATE_USERS = `CREATE TABLE IF NOT EXISTS users (
   user_id TEXT PRIMARY KEY,
-  username TEXT NOT NULL,
+  display_name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL

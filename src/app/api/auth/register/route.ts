@@ -54,8 +54,9 @@ export async function POST(req: Request) {
 
     // 校验验证码 token（无状态 HMAC 签名）
     if (!verifyCodeToken(token, normalizedEmail, code.trim())) {
+      console.error("verifyCodeToken failed:", { token, email: normalizedEmail, code: code.trim() });
       return NextResponse.json(
-        { error: "验证码错误或已过期" },
+        { error: "验证码错误或已过期，请重新获取验证码" },
         { status: 400 }
       );
     }

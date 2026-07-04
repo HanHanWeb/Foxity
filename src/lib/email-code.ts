@@ -1,6 +1,4 @@
 // 邮件验证码 - 无状态方案（HMAC 签名，无需建表）
-// send-code 生成验证码并签名，返回 token 给前端
-// register 用 token + 用户输入的验证码重新计算签名比对
 
 import crypto from "crypto";
 
@@ -16,47 +14,47 @@ export function generateCode(): string {
 
 /**
  * 生成验证码签名 token
- * token = base64(email:expiresAt) + "." + hmac
+ * token = expiresAt.hmac
  */
 export function signCode(email: string, code: string): { code: string; token: string } {
   const expiresAt = Math.floor(Date.now() / 1000) + CODE_TTL_SEC;
-  const payload = `${email}:${expiresAt}`;
-  const payloadB64 = Buffer.from(payload).toString("base64url");
-  const hmac = crypto.createHmac("sha256", getSecret()).update(`${payload}:${code}`).digest("hex");
-  return { code, token: `${payloadB64}.${hmac}` };
+  const data = `${email}:${expiresAt}:${code}`;
+  const hmac = crypto.createHmac("sha256", getSecret()).update(data).digest("hex");
+  return { code, token: `${expiresAt}.${hmac}` };
 }
 
 /**
  * 校验验证码 token
- * 返回 true 表示验证码匹配且未过期
  */
 export function verifyCodeToken(token: string, email: string, code: string): boolean {
   try {
-    const [payloadB64, hmac] = token.split(".");
-    if (!payloadB64 || !hmac) return false;
+    const dotIdx = token.indexOf(".");
+    if (dotIdx < 0) return false;
 
-    const payload = Buffer.from(payloadB64, "base64url").toString();
-    const [tokenEmail, expiresAtStr] = payload.split(":");
-    const expiresAt = Number(expiresAtStr);
+    const expiresAt = Number(token.substring(0, dotIdx));
+    const hmac = token.substring(dotIdx + 1);
 
-    if (tokenEmail !== email) return false;
+    if (!expiresAt || !hmac) return false;
     if (Date.now() / 1000 > expiresAt) return false;
 
+    const data = `${email}:${expiresAt}:${code}`;
     const expectedHmac = crypto
       .createHmac("sha256", getSecret())
-      .update(`${payload}:${code}`)
+      .update(data)
       .digest("hex");
 
+    if (hmac.length !== expectedHmac.length) return false;
     return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(expectedHmac));
-  } catch {
+  } catch (e) {
+    console.error("verifyCodeToken error:", e);
     return false;
   }
 }
 
-// 保留旧接口兼容（GEETEST 相关暂不用数据库，仍用内存）
+// 保留旧接口兼容
 export async function markGeetestVerified(_email: string): Promise<void> {}
 export async function isGeetestVerified(_email: string): Promise<boolean> {
-  return true; // send-code 路由已通过极验二次校验，这里直接放行
+  return true;
 }
 export async function consumeGeetestVerified(_email: string): Promise<boolean> {
   return true;

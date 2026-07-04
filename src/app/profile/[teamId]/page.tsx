@@ -131,6 +131,9 @@ export default function ProfilePage() {
   // 主题色黄
   const themeYellow = "#f2aa72";
 
+  // 没有内存数据且正在从数据库加载时，显示 loading
+  const showLoading = !currentProfile && loadingProfile;
+
   return (
     <main className="min-h-screen bg-fox-cream/30 pb-12">
       <header className="border-b border-fox-gray-light bg-white">
@@ -161,6 +164,14 @@ export default function ProfilePage() {
         </div>
       </header>
 
+      {showLoading ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-fox-navy" />
+            <p className="text-sm text-fox-gray">加载画像数据...</p>
+          </div>
+        </div>
+      ) : (
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -551,6 +562,7 @@ export default function ProfilePage() {
           })}
         </div>
       </div>
+      )}
     </main>
   );
 }

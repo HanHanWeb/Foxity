@@ -115,7 +115,7 @@ export default function MemberSummaryPage() {
   const chatStats = useMemo(() => {
     if (chatHistory.length === 0) return null;
     const userMsgs = chatHistory.filter((m) => m.role === "user");
-    const foxMsgs = chatHistory.filter((m) => m.role === "fox" || m.role === "assistant");
+    const foxMsgs = chatHistory.filter((m) => m.role === "ai");
     const totalChars = chatHistory.reduce((sum, m) => sum + (m.content?.length || 0), 0);
     const userChars = userMsgs.reduce((sum, m) => sum + (m.content?.length || 0), 0);
 

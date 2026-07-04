@@ -14,7 +14,7 @@ import { ScoreComparison } from "@/components/ScoreComparison";
 import { useStore } from "@/store/useStore";
 import { useAuth } from "@/lib/auth";
 import { exportProfileToPDF } from "@/lib/export-pdf";
-import type { HardSkillKey, SoftSkillKey } from "@/types";
+import type { HardSkillKey, SoftSkillKey, UserProfile } from "@/types";
 import { hardSkillLabels, softSkillMeta } from "@/types";
 
 // 软实力维度图标（去掉性格特质和做事风格后剩余的维度）

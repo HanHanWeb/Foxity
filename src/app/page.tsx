@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle, Radar, Compass, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,11 +43,11 @@ export default function HomePage() {
               和 Foxity 聊聊天，慢慢看清你在团队里的样子。
             </p>
 
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 size="lg"
                 onClick={() => router.push("/team/create")}
-                className="h-12 rounded-full bg-[#425a7a] px-8 text-base font-semibold text-white shadow-lg shadow-[#425a7a]/15 hover:bg-[#344866]"
+                className="h-12 rounded-full bg-[#425a7a] px-16 text-base font-semibold text-white shadow-lg shadow-[#425a7a]/15 hover:bg-[#344866]"
               >
                 创建团队
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -63,10 +63,15 @@ export default function HomePage() {
             </div>
 
             <div className="mt-16 flex flex-wrap gap-4">
-              {["自然对话", "十维能力", "陪伴探索", "团队视角"].map((label, index) => (
-                <div key={label} className="flex items-center gap-2 rounded-full border border-[#dfe4ec] bg-white/60 px-4 py-2 text-sm font-semibold text-[#8a96aa] shadow-sm backdrop-blur">
-                  <span className="text-xs">{["▢", "◈", "✣", "♙"][index]}</span>
-                  {label}
+              {[
+                { label: "自然对话", icon: <MessageCircle className="h-3.5 w-3.5" /> },
+                { label: "十维能力", icon: <Radar className="h-3.5 w-3.5" /> },
+                { label: "陪伴探索", icon: <Compass className="h-3.5 w-3.5" /> },
+                { label: "团队视角", icon: <Users className="h-3.5 w-3.5" /> },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2 rounded-full border border-[#dfe4ec] bg-white/60 px-4 py-2 text-sm font-semibold text-[#8a96aa] shadow-sm backdrop-blur">
+                  {item.icon}
+                  {item.label}
                 </div>
               ))}
             </div>
@@ -76,13 +81,12 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative hidden min-h-[520px] items-center justify-center md:flex"
+            className="relative flex min-h-[520px] items-center justify-center md:flex"
           >
-            <div className="absolute right-0 top-6 h-[360px] w-[360px] rounded-full bg-white shadow-[0_30px_80px_rgba(242,170,114,0.18)] lg:h-[420px] lg:w-[420px]" />
-            <div className="absolute right-16 top-24 h-[220px] w-[220px] rounded-full bg-[#fbf7ef] lg:right-20 lg:top-28 lg:h-[260px] lg:w-[260px]" />
-
-            <div className="relative z-10 flex h-[180px] w-[180px] items-center justify-center rounded-full lg:h-[220px] lg:w-[220px]">
-              <img src="/fox.png" alt="Foxity" width={164} height={164} className="rounded-3xl lg:h-[190px] lg:w-[190px]" />
+            <div className="relative flex h-[360px] w-[360px] items-center justify-center rounded-full bg-white shadow-[0_30px_80px_rgba(242,170,114,0.18)] lg:h-[420px] lg:w-[420px]">
+              <div className="flex h-[220px] w-[220px] items-center justify-center rounded-full bg-[#fbf7ef] lg:h-[260px] lg:w-[260px]">
+                <img src="/fox.png" alt="Foxity" width={164} height={164} className="rounded-3xl lg:h-[190px] lg:w-[190px]" />
+              </div>
             </div>
 
             <motion.div

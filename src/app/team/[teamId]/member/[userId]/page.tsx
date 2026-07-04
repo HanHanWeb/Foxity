@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, BarChart3, Brain, MessageSquareQuote, Target, ChevronDown, Loader2, ScrollText, Activity, Clock, MessageCircle, TrendingUp } from "lucide-react";
+import { ArrowLeft, BarChart3, Brain, MessageSquareQuote, Target, ChevronDown, ScrollText, Activity, Clock, MessageCircle, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MemberDetailSkeleton } from "@/components/ui/skeleton";
 import { AbilityRadar } from "@/components/AbilityRadar";
 import { useStore } from "@/store/useStore";
 import { mockProfiles } from "@/mock/data";
@@ -102,6 +103,10 @@ export default function MemberSummaryPage() {
     );
   }
 
+  if (loading) {
+    return <MemberDetailSkeleton />;
+  }
+
   const topScores = leaderSummary
     ? [
         ...leaderSummary.hard_skills.map((s) => ({ label: hardSkillLabels[s.dimension as keyof typeof hardSkillLabels] || allSkillLabels[s.dimension as keyof typeof allSkillLabels] || s.dimension, score: s.score })),
@@ -179,13 +184,6 @@ export default function MemberSummaryPage() {
             </p>
           )}
         </motion.div>
-
-        {loading && (
-          <div className="mt-20 flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-fox-orange" />
-            <p className="text-sm text-fox-gray">Foxity 正在分析该成员的对话记录...</p>
-          </div>
-        )}
 
         {error && (
           <div className="mt-20 flex flex-col items-center justify-center gap-4">

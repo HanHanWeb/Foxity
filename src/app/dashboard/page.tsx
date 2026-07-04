@@ -7,6 +7,7 @@ import { HomeNavbar } from "@/components/Layout/HomeNavbar";
 import { JoinTeamDialog } from "@/components/JoinTeamDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 
 interface MyTeam {
@@ -76,11 +77,7 @@ export default function DashboardPage() {
   };
 
   if (loading || fetching) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-fox-gray" />
-      </main>
-    );
+    return <DashboardSkeleton />;
   }
 
   const renderTeamCard = (team: MyTeam, isOwner: boolean) => {

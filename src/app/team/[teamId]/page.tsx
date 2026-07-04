@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Users, Share2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Users, Share2, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,7 @@ export default function TeamDashboardPage() {
   const loadTeam = useStore((state) => state.loadTeam);
   const [showRealNames, setShowRealNames] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -52,6 +53,18 @@ export default function TeamDashboardPage() {
 
   const inviteLink = `${mounted ? window.location.origin : ""}/team/${params.teamId}/join`;
 
+  // 分享功能：复制本页链接
+  const handleShare = async () => {
+    const pageLink = `${mounted ? window.location.origin : ""}/team/${params.teamId}`;
+    try {
+      await navigator.clipboard.writeText(pageLink);
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    } catch {
+      // 忽略
+    }
+  };
+
   const displayProfiles: UserProfile[] = teamProfiles.map((p, idx) => ({
     ...p,
     user_name: showRealNames ? p.user_name : `成员${idx + 1}`,
@@ -66,9 +79,18 @@ export default function TeamDashboardPage() {
             返回
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-2 h-4 w-4" />
-              分享看板
+            <Button variant="outline" size="sm" onClick={handleShare}>
+              {shared ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  已复制
+                </>
+              ) : (
+                <>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  分享看板
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -84,31 +106,35 @@ export default function TeamDashboardPage() {
               </p>
             </div>
 
-            <Card className="w-full md:w-auto">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fox-orange/10 text-fox-orange">
-                  <Users className="h-6 w-6" />
+            <div className="flex w-full items-center gap-4 rounded-2xl border border-fox-gray-light bg-white p-4 md:w-auto">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fox-cream text-fox-orange">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold text-fox-navy">{completedCount}</span>
+                  <span className="text-sm text-fox-gray">/ {teamProfiles.length} 人已完成</span>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-fox-navy">
-                    {completedCount}/{teamProfiles.length}
-                  </p>
-                  <p className="text-xs text-fox-gray">已完成测评</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-fox-gray-bg">
+                  <div
+                    className="h-full rounded-full bg-fox-orange transition-all duration-500"
+                    style={{ width: `${teamProfiles.length > 0 ? (completedCount / teamProfiles.length) * 100 : 0}%` }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-fox-gray-light bg-white p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold text-fox-navy">邀请链接</p>
-              <p className="text-xs text-fox-gray">把链接发给还没测评的队友</p>
+              <p className="text-xs text-fox-gray">分享链接，邀请团队成员完成测评</p>
             </div>
             <div className="flex gap-2">
               <div className="flex flex-1 items-center gap-2 rounded-lg bg-fox-gray-bg px-3 py-2 text-sm font-mono md:w-auto">
                 {inviteLink}
               </div>
-              <CopyButton value={inviteLink} label="复制" />
+              <CopyButton value={inviteLink} label="" size="icon" />
             </div>
           </div>
         </div>

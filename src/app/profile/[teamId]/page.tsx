@@ -14,6 +14,7 @@ import { ScoreComparison } from "@/components/ScoreComparison";
 import { useStore } from "@/store/useStore";
 import { useAuth } from "@/lib/auth";
 import { exportProfileToPDF } from "@/lib/export-pdf";
+import { ProfileSkeleton } from "@/components/ui/skeleton";
 import type { HardSkillKey, SoftSkillKey, UserProfile } from "@/types";
 import { hardSkillLabels, softSkillMeta } from "@/types";
 
@@ -165,12 +166,7 @@ export default function ProfilePage() {
       </header>
 
       {showLoading ? (
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-fox-navy" />
-            <p className="text-sm text-fox-gray">加载画像数据...</p>
-          </div>
-        </div>
+        <ProfileSkeleton />
       ) : (
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <motion.div

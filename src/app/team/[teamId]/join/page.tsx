@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { JoinTeamSkeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,11 +43,7 @@ export default function JoinTeamPage() {
   }, [loading, user]);
 
   if (loading || (user?.name && !joining)) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-fox-gray" />
-      </main>
-    );
+    return <JoinTeamSkeleton />;
   }
 
   // 未登录用户显示姓名输入表单

@@ -420,6 +420,7 @@ export default function ProfilePage() {
           </TabsContent>
         </Tabs>
       </div>
+      )}
 
       {/* 隐藏的导出区域：包含所有 tab 内容 */}
       <div id="export-container" style={{ position: "absolute", left: "-9999px", top: "0", width: "800px", background: "#ffffff", padding: "24px" }}>
@@ -562,7 +563,6 @@ export default function ProfilePage() {
           })}
         </div>
       </div>
-      )}
     </main>
   );
 }

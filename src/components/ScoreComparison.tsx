@@ -1,15 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { UserProfile, AbilityKey } from "@/types";
-import { abilityLabels } from "@/types";
+import type { UserProfile, HardSkillKey } from "@/types";
+import { hardSkillLabels } from "@/types";
 
 interface ScoreComparisonProps {
   profile: UserProfile;
 }
 
 export function ScoreComparison({ profile }: ScoreComparisonProps) {
-  const abilities = (Object.keys(profile.abilities) as AbilityKey[]).filter(
+  const abilities = (Object.keys(profile.abilities) as HardSkillKey[]).filter(
     (key) => profile.abilities[key].self_score !== undefined
   );
 
@@ -41,7 +41,7 @@ export function ScoreComparison({ profile }: ScoreComparisonProps) {
             className="space-y-2"
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-fox-navy">{abilityLabels[key]}</span>
+              <span className="text-sm font-semibold text-fox-navy">{hardSkillLabels[key]}</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   isAccurate

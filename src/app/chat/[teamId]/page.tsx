@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Menu, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,9 @@ import { InsightCard } from "@/components/InsightCard";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { sendToAI } from "@/lib/ai";
-import type { ChatMessage as ChatMessageType, AbilityKey } from "@/types";
+import type { ChatMessage as ChatMessageType, HardSkillKey, SoftSkillKey } from "@/types";
+import { hardSkillLabels, softSkillLabels, hardSkillMeta, softSkillMeta } from "@/types";
 import { useStore } from "@/store/useStore";
-import { abilityLabels } from "@/types";
 
 function ChatPageInner() {
   const params = useParams<{ teamId: string }>();
@@ -25,16 +24,16 @@ function ChatPageInner() {
 
   const messages = useStore((state) => state.messages);
   const addMessage = useStore((state) => state.addMessage);
-  const updateScores = useStore((state) => state.updateScores);
   const markEvent = useStore((state) => state.markEvent);
-  const setProfile = useStore((state) => state.setProfile);
   const profile = useStore((state) => state.currentProfile);
   const saveProfile = useStore((state) => state.saveProfile);
   const startConversation = useStore((state) => state.startConversation);
+  const applyAssessment = useStore((state) => state.applyAssessment);
 
   const [input, setInput] = useState("");
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const [progress, setProgress] = useState(5);
+  const [progress, setProgress] = useState(0);
+  const [assessmentDone, setAssessmentDone] = useState(false);
   const userName = searchParams.get("user") ?? "你";
 
   useEffect(() => {
@@ -61,7 +60,6 @@ function ChatPageInner() {
     addMessage(userMsg);
     setIsAIThinking(true);
 
-    // 读取最新的 store messages（避免闭包旧值）
     const latestMessages = useStore.getState().messages;
 
     try {
@@ -74,64 +72,43 @@ function ChatPageInner() {
       };
       addMessage(aiMsg);
 
-      if (response.scores_delta) {
-        updateScores(response.scores_delta);
-      }
-      if (response.event) {
-        markEvent(response.event);
-      }
-      if (response.phase) {
-        const phaseToProgress: Record<string, number> = {
-          background: 25,
-          self_assessment: 45,
-          challenge: 70,
-          feedback: 90,
-          summary: 100,
-        };
-        setProgress(phaseToProgress[response.phase] ?? progress);
-      }
-      if (response.profile_data) {
-        setProfile(response.profile_data);
+      // V2：如果包含画像数据，一次性应用
+      if (response.is_final && response.assessment_data) {
+        applyAssessment(response.assessment_data);
         saveProfile();
+        setAssessmentDone(true);
+        setProgress(100);
+      } else {
+        // 基于对话轮数估算进度
+        const userTurns = latestMessages.filter((m) => m.role === "user").length;
+        const estimatedProgress = Math.min(90, Math.round((userTurns / 12) * 100));
+        setProgress((prev) => Math.max(prev, estimatedProgress));
+      }
+
+      if (response.assessment_data?.highlights) {
+        response.assessment_data.highlights.forEach((h) => markEvent(h));
       }
     } finally {
       setIsAIThinking(false);
     }
   };
 
-  const handleQuickReply = (reply: string) => {
-    setInput(reply);
-  };
-
-  const quickReplies = [
-    "我觉得是产品吧",
-    "大概7分？",
-    "有一次团队冲突的经历",
-    "我技术不错",
-  ];
-
   const currentPhase =
-    progress < 25
-      ? "背景摸底"
-      : progress < 45
-      ? "自评分"
-      : progress < 70
-      ? "挑战验证"
+    progress < 15
+      ? "破冰找方向"
+      : progress < 50
+      ? "深度挖掘"
+      : progress < 75
+      ? "交叉验证"
       : progress < 100
-      ? "反馈解读"
-      : "总结";
+      ? "收尾总结"
+      : "已完成";
 
-  const topInsights = profile
-    ? (Object.keys(profile.abilities) as AbilityKey[])
-        .filter((k) => profile.abilities[k].insights.length > 0)
-        .slice(0, 3)
-        .map((k) => ({
-          key: k,
-          text: profile.abilities[k].insights[0],
-          score: profile.abilities[k].score,
-          verified: profile.abilities[k].verification_status,
-        }))
-    : [];
+  // 侧栏：10 维度追踪
+  const allDims = [
+    ...hardSkillMeta.map((m) => ({ key: m.key, label: m.shortName, icon: m.icon, type: "hard" as const })),
+    ...softSkillMeta.map((m) => ({ key: m.key, label: m.shortName, icon: m.icon, type: "soft" as const })),
+  ];
 
   return (
     <div className="flex h-screen flex-col bg-fox-cream/30">
@@ -161,29 +138,25 @@ function ChatPageInner() {
                     {currentPhase}
                   </Badge>
                 </div>
-                {profile && (
-                  <div className="pt-2">
-                    <p className="mb-2 text-sm font-semibold text-fox-navy">已解锁能力</p>
-                    <div className="space-y-1.5">
-                      {(Object.keys(profile.abilities) as AbilityKey[]).map((key) => (
-                        <div key={key} className="flex items-center justify-between">
-                          <span className="text-xs text-fox-gray">{abilityLabels[key]}</span>
-                          <span
-                            className={`text-xs font-bold ${
-                              profile.abilities[key].verification_status === "untested"
-                                ? "text-fox-gray-light"
-                                : "text-fox-orange"
-                            }`}
-                          >
-                            {profile.abilities[key].verification_status === "untested"
-                              ? "待验证"
-                              : `${profile.abilities[key].score}分`}
+                <div className="pt-2">
+                  <p className="mb-2 text-sm font-semibold text-fox-navy">10 维度追踪</p>
+                  <div className="space-y-1.5">
+                    {allDims.map((dim) => {
+                      const score = dim.type === "hard"
+                        ? profile?.abilities[dim.key as HardSkillKey]?.score
+                        : profile?.v2_assessment?.soft_skills?.[dim.key]?.score;
+                      const hasScore = score !== undefined && score > 0;
+                      return (
+                        <div key={dim.key} className="flex items-center justify-between">
+                          <span className="text-xs text-fox-gray">{dim.icon} {dim.label}</span>
+                          <span className={`text-xs font-bold ${hasScore ? "text-fox-orange" : "text-fox-gray-light"}`}>
+                            {hasScore ? `${score}` : "—"}
                           </span>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -212,7 +185,7 @@ function ChatPageInner() {
             variant="outline"
             size="sm"
             onClick={() => router.push(`/profile/${params.teamId}`)}
-            disabled={progress < 50}
+            disabled={!assessmentDone}
           >
             查看画像
           </Button>
@@ -245,6 +218,20 @@ function ChatPageInner() {
               />
             </motion.div>
           )}
+          {assessmentDone && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center pt-4"
+            >
+              <Button
+                variant="secondary"
+                onClick={() => router.push(`/profile/${params.teamId}`)}
+              >
+                查看完整画像 →
+              </Button>
+            </motion.div>
+          )}
         </div>
 
         <aside className="hidden w-72 flex-shrink-0 border-l border-fox-gray-light bg-white p-4 lg:block">
@@ -255,23 +242,37 @@ function ChatPageInner() {
               <p className="mt-2 text-xs text-fox-gray">当前阶段：{currentPhase}</p>
             </div>
             <div>
+              <h3 className="mb-2 text-sm font-bold text-fox-navy">10 维度追踪</h3>
+              <div className="space-y-1.5">
+                {allDims.map((dim) => {
+                  const score = dim.type === "hard"
+                    ? profile?.abilities[dim.key as HardSkillKey]?.score
+                    : profile?.v2_assessment?.soft_skills?.[dim.key]?.score;
+                  const hasScore = score !== undefined && score > 0;
+                  return (
+                    <div key={dim.key} className="flex items-center justify-between">
+                      <span className="text-xs text-fox-gray">{dim.icon} {dim.label}</span>
+                      <span className={`text-xs font-bold ${hasScore ? "text-fox-orange" : "text-fox-gray-light"}`}>
+                        {hasScore ? `${score}` : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
               <h3 className="mb-2 flex items-center gap-1 text-sm font-bold text-fox-navy">
                 <Lightbulb className="h-4 w-4 text-fox-orange" />
-                实时洞察
+                亮点
               </h3>
-              {topInsights.length > 0 ? (
+              {profile?.highlights && profile.highlights.length > 0 ? (
                 <div className="space-y-2">
-                  {topInsights.map((item, idx) => (
-                    <InsightCard
-                      key={item.key}
-                      icon="💡"
-                      text={item.text}
-                      index={idx}
-                    />
+                  {profile.highlights.slice(0, 3).map((h, idx) => (
+                    <InsightCard key={idx} icon="✨" text={h} index={idx} />
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-fox-gray">聊几句，洞察会慢慢出现～</p>
+                <p className="text-xs text-fox-gray">聊几句，亮点会慢慢出现～</p>
               )}
             </div>
           </div>

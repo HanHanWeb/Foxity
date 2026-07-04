@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Users, Share2, Copy, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Users, Share2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +12,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { useStore } from "@/store/useStore";
 import { mockProfiles, mockTeam } from "@/mock/data";
 import type { UserProfile } from "@/types";
+import { hardSkillLabels, hardSkillMeta } from "@/types";
 import { cn } from "@/lib/utils";
 
 export default function TeamDashboardPage() {
@@ -22,6 +22,11 @@ export default function TeamDashboardPage() {
   const profiles = useStore((state) => state.profiles);
   const loadTeam = useStore((state) => state.loadTeam);
   const [showRealNames, setShowRealNames] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     loadTeam(params.teamId);
@@ -32,11 +37,20 @@ export default function TeamDashboardPage() {
     ? profiles.filter((p) => p.team_id === params.teamId)
     : mockProfiles;
 
+  useEffect(() => {
+    if (team?.team_name) {
+      document.title = `${team.team_name} - 团队看板 - Foxity`;
+    }
+    return () => {
+      document.title = "Foxity";
+    };
+  }, [team?.team_name]);
+
   const completedCount = teamProfiles.filter(
-    (p) => (Object.values(p.abilities) as any[]).filter((a) => a.verification_status !== "untested").length >= 3
+    (p) => (Object.values(p.abilities || {}) as any[]).filter((a) => a.verification_status !== "untested").length >= 3
   ).length;
 
-  const inviteLink = `/team/${params.teamId}/join`;
+  const inviteLink = `${mounted ? window.location.origin : ""}/team/${params.teamId}/join`;
 
   const displayProfiles: UserProfile[] = teamProfiles.map((p, idx) => ({
     ...p,
@@ -61,15 +75,9 @@ export default function TeamDashboardPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-8"
-        >
+        <div className="mb-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <Badge variant="outline" className="mb-2">{team.competition_type}</Badge>
               <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{team.team_name}</h1>
               <p className="mt-1 text-sm text-fox-gray">
                 团队码：<span className="font-mono font-bold text-fox-navy">{team.team_id}</span>
@@ -103,7 +111,7 @@ export default function TeamDashboardPage() {
               <CopyButton value={inviteLink} label="复制" />
             </div>
           </div>
-        </motion.div>
+        </div>
 
         <Tabs defaultValue="matrix" className="w-full">
           <TabsList className="mb-6 grid w-full grid-cols-3">
@@ -140,31 +148,23 @@ export default function TeamDashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {["background_market", "product", "tech", "finance", "design"].map((ability) => {
+                    {hardSkillMeta.map((dim) => {
                       const count = displayProfiles.filter((p) => {
-                        const abilities = Object.entries(p.abilities) as [string, any][];
+                        const abilities = Object.entries(p.abilities || {}) as [string, any][];
+                        if (abilities.length === 0) return false;
                         const maxAbility = abilities.reduce((a, b) => a[1].score > b[1].score ? a : b);
-                        return maxAbility[0] === ability;
+                        return maxAbility[0] === dim.key;
                       }).length;
                       const percent = displayProfiles.length > 0 ? (count / displayProfiles.length) * 100 : 0;
-                      const labels: Record<string, string> = {
-                        background_market: "市场分析",
-                        product: "产品思维",
-                        tech: "技术能力",
-                        finance: "商业/财务",
-                        design: "设计能力",
-                      };
                       return (
-                        <div key={ability}>
+                        <div key={dim.key}>
                           <div className="mb-1 flex justify-between text-sm">
-                            <span className="text-fox-navy">{labels[ability]}</span>
+                            <span className="text-fox-navy">{dim.icon} {dim.name}</span>
                             <span className="text-fox-gray">{count}人</span>
                           </div>
                           <div className="h-3 rounded-full bg-fox-gray-bg overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percent}%` }}
-                              transition={{ duration: 0.6 }}
+                            <div
+                              style={{ width: `${percent}%` }}
                               className="h-full bg-fox-orange rounded-full"
                             />
                           </div>
@@ -241,12 +241,7 @@ export default function TeamDashboardPage() {
             <h2 className="text-lg font-bold text-fox-navy">成员列表</h2>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {displayProfiles.map((profile, idx) => (
-                <motion.div
-                  key={profile.user_id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.05 }}
-                >
+                <div key={profile.user_id}>
                   <Card className="cursor-pointer transition-all hover:shadow-md"
                     onClick={() => router.push(`/team/${params.teamId}/member/${profile.user_id}`)}
                   >
@@ -261,7 +256,7 @@ export default function TeamDashboardPage() {
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-5 gap-1">
-                        {Object.values(profile.abilities).map((ability: any, i: number) => (
+                        {Object.values(profile.abilities || {}).map((ability: any, i: number) => (
                           <div key={i} className="text-center">
                             <div
                               className={cn(
@@ -282,7 +277,7 @@ export default function TeamDashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               ))}
             </div>
           </TabsContent>

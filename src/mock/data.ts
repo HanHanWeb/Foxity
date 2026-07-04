@@ -4,16 +4,17 @@ import type {
   DimensionMeta,
   UserProfile,
   Team,
-  AbilityKey,
+  HardSkillKey,
+  SoftSkillKey,
 } from "@/types";
+import { hardSkillMeta } from "@/types";
 
-export const dimensions: DimensionMeta[] = [
-  { key: "background_market", icon: "📊", name: "背景+市场组", shortName: "背景市场" },
-  { key: "product", icon: "🎯", name: "产品组", shortName: "产品" },
-  { key: "tech", icon: "💻", name: "技术组", shortName: "技术" },
-  { key: "finance", icon: "💰", name: "财务组", shortName: "财务" },
-  { key: "design", icon: "🎨", name: "美工组", shortName: "美工" },
-];
+export const dimensions: DimensionMeta[] = hardSkillMeta.map((m) => ({
+  key: m.key,
+  icon: m.icon,
+  name: m.name,
+  shortName: m.shortName,
+}));
 
 export const expressionText = {
   smile: "认真倾听中...",
@@ -38,6 +39,18 @@ function makeAbility(score: number, status: "verified" | "unverified" | "unteste
   };
 }
 
+// V2 硬技能初始 abilities
+function makeInitialAbilities() {
+  const abilities: Record<HardSkillKey, ReturnType<typeof makeAbility>> = {
+    market_analysis: makeAbility(0, "untested", []),
+    product_thinking: makeAbility(0, "untested", []),
+    technical: makeAbility(0, "untested", []),
+    business_finance: makeAbility(0, "untested", []),
+    design: makeAbility(0, "untested", []),
+  };
+  return abilities;
+}
+
 export const mockProfiles: UserProfile[] = [
   {
     user_id: "u_chenyu",
@@ -49,17 +62,17 @@ export const mockProfiles: UserProfile[] = [
     overview_summary:
       "你擅长用结构化框架拆解复杂问题，数据敏感度高，是团队里的「理性锚点」。你习惯先给结论再补证据，表达清晰，但有时会低估自己的市场分析能力。",
     abilities: {
-      background_market: makeAbility(8, "verified", [
+      market_analysis: makeAbility(8, "verified", [
         "能用 PEST 拆解行业，并对竞品建立清晰对比维度",
         "会主动说明数据来源、样本和结论边界",
         "市场分析框架感强，不只是罗列资料",
       ], ["描述过完整市场调研项目", "给出过竞品对比框架"], 6),
-      product: makeAbility(6, "unverified", [
+      product_thinking: makeAbility(6, "unverified", [
         "在描述 dashboard 时体现出用户路径意识",
         "能区分功能和需求，但深度待验证",
       ], [], 7),
-      tech: makeAbility(3, "untested", ["技术相关信息较少，待进一步探索"], []),
-      finance: makeAbility(5, "unverified", [
+      technical: makeAbility(3, "untested", ["技术相关信息较少，待进一步探索"], []),
+      business_finance: makeAbility(5, "unverified", [
         "能理解成本和收入假设，但缺少完整模型经验",
       ], [], 5),
       design: makeAbility(4, "unverified", [
@@ -85,12 +98,6 @@ export const mockProfiles: UserProfile[] = [
           "你已经有用户路径意识，可以进一步练习：每次看到一个功能，先想「用户在什么场景下用」，再想「怎么实现」。",
         priority: "medium",
       },
-      {
-        area: "视觉呈现能力",
-        suggestion:
-          "建议用一次完整的 PPT 或海报作品来验证视觉呈现能力，可以从信息层级练习开始。",
-        priority: "low",
-      },
     ],
   },
   {
@@ -103,14 +110,14 @@ export const mockProfiles: UserProfile[] = [
     overview_summary:
       "你擅长把模糊需求变成可执行方案，推进意识强，是团队里的「发动机」。你能区分用户想要和真实痛点，但有时会为了团队和谐过早让步。",
     abilities: {
-      background_market: makeAbility(5, "unverified", ["能读懂调研结论，但独立完成深度分析经验不足"], [], 5),
-      product: makeAbility(8, "verified", [
+      market_analysis: makeAbility(5, "unverified", ["能读懂调研结论，但独立完成深度分析经验不足"], [], 5),
+      product_thinking: makeAbility(8, "verified", [
         "原型和用户路径描述完整",
         "能区分用户想要和真实痛点",
         "方案表达清楚，能把功能拆成用户路径",
       ], ["描述过完整产品设计思路", "给出过用户旅程地图"], 8),
-      tech: makeAbility(3, "untested", ["技术实现细节参与较少"], []),
-      finance: makeAbility(5, "unverified", ["理解商业模式但模型细节不足"], [], 6),
+      technical: makeAbility(3, "untested", ["技术实现细节参与较少"], []),
+      business_finance: makeAbility(5, "unverified", ["理解商业模式但模型细节不足"], [], 6),
       design: makeAbility(6, "unverified", ["有基础页面审美，能给出合理的布局建议"], [], 7),
     },
     behavior_patterns: {
@@ -126,12 +133,6 @@ export const mockProfiles: UserProfile[] = [
           "你善于妥协和推进，但有时会牺牲方案的锋利度。建议练习在「不影响关系」的前提下坚持核心判断。",
         priority: "high",
       },
-      {
-        area: "技术可行性判断",
-        suggestion:
-          "可以多和技术同学交流，了解常见技术约束，这样在产品设计时就能更早排除不可行方向。",
-        priority: "medium",
-      },
     ],
   },
   {
@@ -144,14 +145,14 @@ export const mockProfiles: UserProfile[] = [
     overview_summary:
       "你工程实现能力强，问题定位快，是团队里的「落地保障」。你能把技术方案讲清楚给非技术同学听，这是很珍贵的能力。",
     abilities: {
-      background_market: makeAbility(3, "untested", ["市场和商业背景接触较少"], []),
-      product: makeAbility(5, "unverified", ["能理解核心需求，但产品思维深度待提升"], [], 4),
-      tech: makeAbility(9, "verified", [
+      market_analysis: makeAbility(3, "untested", ["市场和商业背景接触较少"], []),
+      product_thinking: makeAbility(5, "unverified", ["能理解核心需求，但产品思维深度待提升"], [], 4),
+      technical: makeAbility(9, "verified", [
         "提供过完整架构图和代码实现",
         "能拆模块、估复杂度并给出技术路径",
         "问题定位快，描述 bug 时能定位边界条件",
       ], ["描述过系统架构设计", "解决过复杂技术难题"], 9),
-      finance: makeAbility(3, "untested", ["财务和商业模型接触较少"], []),
+      business_finance: makeAbility(3, "untested", ["财务和商业模型接触较少"], []),
       design: makeAbility(4, "unverified", ["能还原基础 UI，但设计创意不是强项"], [], 3),
     },
     behavior_patterns: {
@@ -167,12 +168,6 @@ export const mockProfiles: UserProfile[] = [
           "你倾向于等需求明确后再动手，但如果能更早参与产品讨论，可以从技术角度帮助团队避开很多坑。",
         priority: "medium",
       },
-      {
-        area: "商业认知补充",
-        suggestion:
-          "建议了解一些基础的商业和财务知识，这样能更好地理解「为什么做这个功能」，技术决策也会更有方向。",
-        priority: "low",
-      },
     ],
   },
   {
@@ -185,13 +180,13 @@ export const mockProfiles: UserProfile[] = [
     overview_summary:
       "你兼顾财务逻辑和路演呈现，风险意识强，是团队里的「商业门面」。你做财务预测时有风险管理思维，很适合参与答辩问答。",
     abilities: {
-      background_market: makeAbility(6, "verified", [
+      market_analysis: makeAbility(6, "verified", [
         "能把市场数据转成规模假设",
         "会主动列出关键不确定性",
       ], ["做过市场规模测算"], 6),
-      product: makeAbility(4, "unverified", ["产品细节参与较少"], []),
-      tech: makeAbility(3, "untested", ["技术理解较浅"], []),
-      finance: makeAbility(8, "verified", [
+      product_thinking: makeAbility(4, "unverified", ["产品细节参与较少"], []),
+      technical: makeAbility(3, "untested", ["技术理解较浅"], []),
+      business_finance: makeAbility(8, "verified", [
         "能解释收入、成本和增长率假设",
         "财务逻辑自洽，能说明收入模型和成本结构的关系",
       ], ["建立过完整财务模型", "做过敏感性分析"], 7),
@@ -213,12 +208,6 @@ export const mockProfiles: UserProfile[] = [
           "你面对压力时容易焦虑，但能靠清单恢复。建议提前准备「压力应对清单」，把大任务拆成可执行的小步骤。",
         priority: "high",
       },
-      {
-        area: "技术理解加深",
-        suggestion:
-          "可以多了解技术实现的基本逻辑，这样在做财务假设时能更好地估成本和周期。",
-        priority: "medium",
-      },
     ],
   },
 ];
@@ -235,10 +224,10 @@ export const mockTeam: Team = {
 export const initialAssessmentState: AssessmentState = {
   current_expression: "smile",
   covered_dimensions: {
-    background_market: "untested",
-    product: "untested",
-    tech: "untested",
-    finance: "untested",
+    market_analysis: "untested",
+    product_thinking: "untested",
+    technical: "untested",
+    business_finance: "untested",
     design: "untested",
   },
   key_events: { stress: false, conflict: false },
@@ -250,7 +239,7 @@ export const mockMessages: ChatMessage[] = [
   {
     id: "m_1",
     role: "fox",
-    content: "嗨～先随便聊聊——你觉得自己比较擅长的3件事是什么？可以是调研、代码、PPT、财务模型，最好带一句例子。",
+    content: "嘿！我是 Foxity 🦊，一只专门帮人发现自己有多厉害的小狐狸。别紧张，这不是什么正经面试——就是聊聊天。先说说，你最近在忙什么？有没有什么东西让你觉得'这个我在行'？",
     emotion: "smile",
     timestamp: Date.now() - 60000,
   },

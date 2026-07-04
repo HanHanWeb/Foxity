@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/store/useStore";
 import { mockProfiles } from "@/mock/data";
-import { abilityLabels, softSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType } from "@/types";
+import { hardSkillLabels, softSkillLabels, allSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
@@ -103,7 +103,7 @@ export default function MemberSummaryPage() {
 
   const topScores = leaderSummary
     ? [
-        ...leaderSummary.hard_skills.map((s) => ({ label: abilityLabels[s.dimension as keyof typeof abilityLabels] || s.dimension, score: s.score })),
+        ...leaderSummary.hard_skills.map((s) => ({ label: hardSkillLabels[s.dimension as keyof typeof hardSkillLabels] || allSkillLabels[s.dimension as keyof typeof allSkillLabels] || s.dimension, score: s.score })),
         ...leaderSummary.soft_skills.map((s) => ({ label: softSkillLabels[s.dimension as keyof typeof softSkillLabels] || s.dimension, score: s.score })),
       ]
         .sort((a, b) => b.score - a.score)
@@ -206,7 +206,7 @@ export default function MemberSummaryPage() {
                 {[...leaderSummary.hard_skills, ...leaderSummary.soft_skills]
                   .filter((s) => s.key_quotes && s.key_quotes.length > 0)
                   .map((skill, idx) => {
-                    const dimLabel = abilityLabels[skill.dimension as keyof typeof abilityLabels] ||
+                    const dimLabel = hardSkillLabels[skill.dimension as keyof typeof hardSkillLabels] ||
                       softSkillLabels[skill.dimension as keyof typeof softSkillLabels] ||
                       skill.dimension;
                     return skill.key_quotes.map((quote, qIdx) => (
@@ -299,7 +299,7 @@ export default function MemberSummaryPage() {
 }
 
 function SkillAssessmentItem({ skill }: { skill: LeaderSkillAssessment }) {
-  const dimLabel = abilityLabels[skill.dimension as keyof typeof abilityLabels] ||
+  const dimLabel = hardSkillLabels[skill.dimension as keyof typeof hardSkillLabels] ||
     softSkillLabels[skill.dimension as keyof typeof softSkillLabels] ||
     skill.dimension;
   const status = statusConfig[skill.status] || statusConfig.untested;

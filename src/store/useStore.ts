@@ -3,13 +3,14 @@
 import { create } from "zustand";
 import { initialAssessmentState, mockProfiles, mockTeam } from "@/mock/data";
 import type {
-  AbilityKey,
+  HardSkillKey,
   AssessmentState,
   ChatMessage,
   DimensionStatus,
   Expression,
   Team,
   UserProfile,
+  V2AssessmentData,
 } from "@/types";
 import { createId, createTeamCode } from "@/lib/utils";
 
@@ -26,15 +27,15 @@ interface StoreState {
   createTeam: (name: string, type: string, organizer: string) => Promise<string>;
   joinTeam: (teamId: string, userName: string) => Promise<UserProfile>;
   addMessage: (msg: ChatMessage) => void;
-  updateScores: (delta: Partial<Record<AbilityKey, number>>) => void;
   markEvent: (event: string) => void;
   setProfile: (data: Partial<UserProfile>) => void;
   saveProfile: () => Promise<void>;
   startConversation: (userName: string) => void;
   updateExpression: (expr: Expression) => void;
-  updateDimensionStatus: (dim: AbilityKey, status: DimensionStatus) => void;
+  updateDimensionStatus: (dim: HardSkillKey, status: DimensionStatus) => void;
   triggerKeyEvent: (type: "stress" | "conflict") => void;
   addInsight: (insight: { icon: string; text: string }) => void;
+  applyAssessment: (data: V2AssessmentData) => void;
 }
 
 function getInitialProfile(): UserProfile {
@@ -47,40 +48,24 @@ function getInitialProfile(): UserProfile {
     core_positioning: "待测评",
     overview_summary: "完成测评后，Foxity 会为你生成完整的个人画像。",
     abilities: {
-      background_market: {
-        score: 0,
-        verification_status: "untested",
-        insights: [],
-        evidence_events: [],
-      },
-      product: {
-        score: 0,
-        verification_status: "untested",
-        insights: [],
-        evidence_events: [],
-      },
-      tech: {
-        score: 0,
-        verification_status: "untested",
-        insights: [],
-        evidence_events: [],
-      },
-      finance: {
-        score: 0,
-        verification_status: "untested",
-        insights: [],
-        evidence_events: [],
-      },
-      design: {
-        score: 0,
-        verification_status: "untested",
-        insights: [],
-        evidence_events: [],
-      },
+      market_analysis: { score: 0, verification_status: "untested", insights: [], evidence_events: [] },
+      product_thinking: { score: 0, verification_status: "untested", insights: [], evidence_events: [] },
+      technical: { score: 0, verification_status: "untested", insights: [], evidence_events: [] },
+      business_finance: { score: 0, verification_status: "untested", insights: [], evidence_events: [] },
+      design: { score: 0, verification_status: "untested", insights: [], evidence_events: [] },
     },
     growth_suggestions: [],
   };
 }
+
+// V2 画像数据 key 到硬技能 key 的映射
+const hardSkillKeyMap: Record<string, HardSkillKey> = {
+  market_analysis: "market_analysis",
+  product_thinking: "product_thinking",
+  technical: "technical",
+  business_finance: "business_finance",
+  design: "design",
+};
 
 export const useStore = create<StoreState>((set, get) => ({
   currentTeam: mockTeam,
@@ -115,7 +100,6 @@ export const useStore = create<StoreState>((set, get) => ({
 
   createTeam: async (name, type, organizer) => {
     let teamId = createTeamCode();
-    // 查重，确保 team_id 不重复
     try {
       let unique = false;
       while (!unique) {
@@ -137,7 +121,6 @@ export const useStore = create<StoreState>((set, get) => ({
       members: [],
       created_at: new Date().toISOString(),
     };
-    // 写入数据库
     try {
       await fetch("/api/teams", {
         method: "POST",
@@ -158,7 +141,6 @@ export const useStore = create<StoreState>((set, get) => ({
       user_name: userName,
       team_id: teamId,
     };
-    // 写入数据库
     try {
       await fetch("/api/profiles", {
         method: "POST",
@@ -183,7 +165,6 @@ export const useStore = create<StoreState>((set, get) => ({
   addMessage: (msg) => {
     const messages = [...get().messages, msg];
     set({ messages });
-    // 同步保存对话记录到数据库
     const profile = get().currentProfile;
     if (profile?.user_id) {
       fetch("/api/chat-history", {
@@ -200,27 +181,12 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  updateScores: (delta) => {
-    const current = get().currentProfile ?? getInitialProfile();
-    const newAbilities = { ...current.abilities };
-    (Object.keys(delta) as AbilityKey[]).forEach((key) => {
-      const d = delta[key] ?? 0;
-      newAbilities[key] = {
-        ...newAbilities[key],
-        score: Math.min(10, Math.max(0, newAbilities[key].score + d)),
-        verification_status: newAbilities[key].score + d > 0 ? "unverified" : "untested",
-      };
-    });
-    const updated = { ...current, abilities: newAbilities };
-    set({ currentProfile: updated });
-  },
-
   markEvent: (event) => {
     const current = get().currentProfile ?? getInitialProfile();
     const allEvents = Object.values(current.abilities).flatMap((a) => a.evidence_events);
     if (allEvents.includes(event)) return;
     const newAbilities = { ...current.abilities };
-    const firstIncomplete = (Object.keys(newAbilities) as AbilityKey[]).find(
+    const firstIncomplete = (Object.keys(newAbilities) as HardSkillKey[]).find(
       (k) => newAbilities[k].verification_status !== "verified"
     );
     if (firstIncomplete) {
@@ -241,7 +207,6 @@ export const useStore = create<StoreState>((set, get) => ({
   saveProfile: async () => {
     const profile = get().currentProfile;
     if (!profile) return;
-    // 写入数据库
     try {
       await fetch("/api/profiles", {
         method: "POST",
@@ -256,7 +221,6 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch (e) {
       console.error("saveProfile db error:", e);
     }
-    // 更新本地 state
     set({
       profiles: [profile, ...get().profiles.filter((p) => p.user_id !== profile.user_id)],
     });
@@ -269,7 +233,7 @@ export const useStore = create<StoreState>((set, get) => ({
     };
     const welcome: ChatMessage = {
       role: "fox",
-      content: `嗨，${userName}！我是 Foxity～我们来聊聊天吧，你觉得自己比较擅长的3件事是什么？最好带点例子哦。`,
+      content: `嘿！我是 Foxity 🦊，一只专门帮人发现自己有多厉害的小狐狸。别紧张，这不是什么正经面试——就是聊聊天。先说说，你最近在忙什么？有没有什么东西让你觉得'这个我在行'？`,
       emotion: "smile",
       timestamp: Date.now(),
     };
@@ -307,5 +271,41 @@ export const useStore = create<StoreState>((set, get) => ({
       insights: [insight, ...get().assessmentState.insights].slice(0, 6),
     };
     set({ assessmentState });
+  },
+
+  // V2：一次性应用画像数据
+  applyAssessment: (data) => {
+    const current = get().currentProfile ?? getInitialProfile();
+    const newAbilities = { ...current.abilities };
+
+    // 写入硬技能分数
+    Object.entries(data.hard_skills || {}).forEach(([key, val]) => {
+      const hk = hardSkillKeyMap[key];
+      if (hk && val) {
+        newAbilities[hk] = {
+          score: val.score,
+          verification_status: val.score > 0 ? "verified" : "untested",
+          insights: [],
+          evidence_events: [],
+        };
+      }
+    });
+
+    const updated: UserProfile = {
+      ...current,
+      core_positioning: data.tags?.[0] || current.core_positioning,
+      overview_summary: data.summary || current.overview_summary,
+      abilities: newAbilities,
+      tags: data.tags,
+      soft_skill_narrative: data.soft_skill_narrative,
+      highlights: data.highlights,
+      growth_suggestions: (data.areas_for_growth || []).map((g) => ({
+        area: g.title,
+        suggestion: g.detail,
+        priority: g.priority === "高" ? "high" : g.priority === "中" ? "medium" : "low",
+      })),
+      v2_assessment: data,
+    };
+    set({ currentProfile: updated });
   },
 }));

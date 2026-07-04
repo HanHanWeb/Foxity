@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Foxity",
+  title: {
+    default: "Foxity",
+    template: "%s - Foxity",
+  },
   description: "AI 能动性驱动的团队能力测评产品",
   icons: {
     icon: "/fox.png",

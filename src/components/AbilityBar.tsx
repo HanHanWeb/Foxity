@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { AbilityKey, VerifyStatus } from "@/types";
-import { dimensions } from "@/mock/data";
+import type { HardSkillKey, VerifyStatus } from "@/types";
+import { hardSkillMeta } from "@/types";
 import { Tag } from "@/components/Tag";
 
 interface AbilityBarProps {
-  dimension: AbilityKey;
+  dimension: HardSkillKey;
   score: number;
   verified: VerifyStatus;
   delay?: number;
@@ -19,7 +19,7 @@ const statusLabel: Record<VerifyStatus, { label: string; tone: "mint" | "yellow"
 };
 
 export function AbilityBar({ dimension, score, verified, delay = 0 }: AbilityBarProps) {
-  const meta = dimensions.find((item) => item.key === dimension);
+  const meta = hardSkillMeta.find((item) => item.key === dimension);
   const status = statusLabel[verified];
   const fillColor =
     verified === "verified" ? "bg-fox-orange" : verified === "unverified" ? "bg-fox-orange-light" : "bg-fox-gray";

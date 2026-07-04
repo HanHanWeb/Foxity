@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getUserId } from "@/lib/session";
 
 export async function GET(
   req: Request,
@@ -11,7 +12,7 @@ export async function GET(
     const db = getDb();
 
     const teamResult = await db.execute({
-      sql: `SELECT team_id, team_name, competition_type, organizer_name, created_at
+      sql: `SELECT team_id, team_name, competition_type, organizer_name, owner_user_id, created_at
             FROM teams WHERE team_id = ?`,
       args: [teamId],
     });
@@ -21,6 +22,17 @@ export async function GET(
     }
 
     const teamRow = teamResult.rows[0];
+
+    // 权限校验：只有创建者（队长）能查看完整看板
+    const userId = await getUserId();
+    const ownerId = teamRow.owner_user_id as string | null;
+    if (!ownerId || !userId || ownerId !== userId) {
+      return NextResponse.json(
+        { error: "无权查看，只有队长可以访问团队看板" },
+        { status: 403 }
+      );
+    }
+
     const team = {
       team_id: teamRow.team_id,
       team_name: teamRow.team_name,

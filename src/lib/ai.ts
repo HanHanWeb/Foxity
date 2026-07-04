@@ -1,4 +1,4 @@
-import type { AIResponse, ChatMessage } from "@/types";
+import type { AIResponse, ChatMessage, Expression } from "@/types";
 
 export async function sendToAI(messages: ChatMessage[], userName?: string): Promise<AIResponse> {
   try {
@@ -24,17 +24,15 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
     }
 
     const data = await response.json();
+    const emotion = (data.emotion || "thinking") as Expression;
 
     return {
       reply: data.reply,
-      emotion: data.emotion,
-      content: data.reply,
-      expression: data.emotion,
-      phase: data.phase,
-      scores_delta: data.scores_delta,
-      event: data.event,
-      profile_data: data.profile_data,
-      is_final: data.phase === "summary",
+      emotion,
+      content: data.content || data.reply,
+      expression: emotion,
+      is_final: data.is_final || false,
+      assessment_data: data.assessment_data || undefined,
     };
   } catch (error) {
     console.error("sendToAI error:", error);

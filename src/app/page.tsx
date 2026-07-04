@@ -3,15 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, MessageCircle, Radar, Compass, Users } from "lucide-react";
+import { ArrowRight, MessageCircle, Radar, Compass, Users, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HomeNavbar } from "@/components/Layout/HomeNavbar";
+import { useAuth } from "@/lib/auth";
 
 const CODE_LENGTH = 6;
 
 export default function HomePage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -67,6 +69,14 @@ export default function HomePage() {
       inputRefs.current[pasted.length]?.focus();
     }
   };
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-fox-gray" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen">
@@ -188,6 +198,13 @@ export default function HomePage() {
           <p className="text-center text-xs text-fox-gray">输入完成后将自动加入团队</p>
         </DialogContent>
       </Dialog>
+
+      <footer className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 py-3">
+        <div className="rounded-2xl bg-black px-3 py-1.5">
+          <img src="/nextstep_white.png" alt="NextStep" className="h-3.5" />
+        </div>
+        <p className="text-xs text-fox-gray">Copyright © 好队 All rights reserved</p>
+      </footer>
     </main>
   );
 }

@@ -4,16 +4,16 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AbilityBar } from "@/components/AbilityBar";
-import type { UserProfile, AbilityKey } from "@/types";
+import type { UserProfile, HardSkillKey } from "@/types";
 
 interface AbilityBarListProps {
   profile: UserProfile;
 }
 
 export function AbilityBarList({ profile }: AbilityBarListProps) {
-  const [expanded, setExpanded] = useState<AbilityKey | null>(null);
+  const [expanded, setExpanded] = useState<HardSkillKey | null>(null);
 
-  const abilities = Object.keys(profile.abilities) as AbilityKey[];
+  const abilities = Object.keys(profile.abilities) as HardSkillKey[];
 
   return (
     <div className="space-y-4">

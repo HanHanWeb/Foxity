@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { dimensions } from "@/mock/data";
-import type { UserProfile } from "@/types";
+import type { UserProfile, Ability } from "@/types";
 import { Tag } from "@/components/Tag";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,7 @@ export function TeamMatrix({ profiles }: TeamMatrixProps) {
             <div key={profile.user_id} className="grid grid-cols-[120px_repeat(5,minmax(90px,1fr))] border-t border-fox-gray-light text-sm hover:bg-fox-cream/50">
               <div className="p-3 font-medium text-fox-navy">{profile.user_name}</div>
               {dimensions.map((dim) => {
-                const ability = profile.abilities[dim.key];
+                const ability = profile.abilities?.[dim.key] ?? { score: 0, verification_status: "untested" };
                 if (mode === "heatmap") {
                   return (
                     <div key={dim.key} className={cn("p-3 text-center font-semibold", getHeatColor(ability.score, ability.verification_status))}>
@@ -83,8 +83,10 @@ export function TeamMatrix({ profiles }: TeamMatrixProps) {
             <div className="p-3">团队均分</div>
             {dimensions.map((dim) => {
               const validScores = profiles
-                .map((profile) => profile.abilities[dim.key])
-                .filter((ability) => ability.verification_status !== "untested");
+                .map((profile) => profile.abilities?.[dim.key])
+                .filter((ability): ability is Ability =>
+                  !!ability && ability.verification_status !== "untested"
+                );
               const avg =
                 validScores.length > 0
                   ? validScores.reduce((sum, ability) => sum + ability.score, 0) / validScores.length

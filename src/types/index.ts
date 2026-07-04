@@ -1,15 +1,60 @@
-export type AbilityKey = "background_market" | "product" | "tech" | "finance" | "design";
-export type VerifyStatus = "verified" | "unverified" | "untested";
-export type Expression = "smile" | "thinking" | "curious" | "challenge" | "nod" | "surprised" | "encourage" | "serious";
-export type DimensionStatus = "untested" | "in_progress" | "done";
+// ===== V2 维度定义 =====
 
-export const abilityLabels: Record<AbilityKey, string> = {
-  background_market: "市场分析",
-  product: "产品思维",
-  tech: "技术能力",
-  finance: "商业/财务",
+// 硬技能维度（5个）
+export type HardSkillKey = "market_analysis" | "product_thinking" | "technical" | "business_finance" | "design";
+
+export const hardSkillLabels: Record<HardSkillKey, string> = {
+  market_analysis: "市场分析",
+  product_thinking: "产品思维",
+  technical: "技术能力",
+  business_finance: "商业/财务",
   design: "设计能力",
 };
+
+export const hardSkillMeta: { key: HardSkillKey; icon: string; name: string; shortName: string }[] = [
+  { key: "market_analysis", icon: "📊", name: "市场分析", shortName: "市场" },
+  { key: "product_thinking", icon: "🎯", name: "产品思维", shortName: "产品" },
+  { key: "technical", icon: "💻", name: "技术能力", shortName: "技术" },
+  { key: "business_finance", icon: "💰", name: "商业/财务", shortName: "财务" },
+  { key: "design", icon: "🎨", name: "设计能力", shortName: "设计" },
+];
+
+// 软实力维度（5个）
+export type SoftSkillKey = "personality" | "communication" | "work_style" | "leadership" | "learning";
+
+export const softSkillLabels: Record<SoftSkillKey, string> = {
+  personality: "性格特质",
+  communication: "沟通协作",
+  work_style: "做事风格",
+  leadership: "领导力",
+  learning: "学习适应",
+};
+
+export const softSkillMeta: { key: SoftSkillKey; icon: string; name: string; shortName: string }[] = [
+  { key: "personality", icon: "🧠", name: "性格特质", shortName: "性格" },
+  { key: "communication", icon: "💬", name: "沟通协作", shortName: "沟通" },
+  { key: "work_style", icon: "📋", name: "做事风格", shortName: "做事" },
+  { key: "leadership", icon: "👑", name: "领导力", shortName: "领导" },
+  { key: "learning", icon: "📚", name: "学习适应", shortName: "学习" },
+];
+
+// 全部 10 个维度
+export type SkillKey = HardSkillKey | SoftSkillKey;
+
+export const allSkillLabels: Record<SkillKey, string> = {
+  ...hardSkillLabels,
+  ...softSkillLabels,
+};
+
+// 兼容旧代码的别名
+export type AbilityKey = HardSkillKey;
+export const abilityLabels = hardSkillLabels;
+export type DimensionStatus = "untested" | "in_progress" | "done";
+
+// ===== 通用类型 =====
+
+export type VerifyStatus = "verified" | "unverified" | "untested";
+export type Expression = "smile" | "thinking" | "curious" | "challenge" | "nod" | "surprised" | "encourage" | "serious";
 
 export interface Ability {
   score: number;
@@ -17,6 +62,48 @@ export interface Ability {
   insights: string[];
   evidence_events: string[];
   self_score?: number;
+}
+
+// V2 画像数据结构（硬技能+软实力）
+export type SkillScores = Record<HardSkillKey, number> & Partial<Record<SoftSkillKey, number>>;
+
+// ===== V2 画像输出 =====
+
+export interface V2SkillScore {
+  score: number;
+  label: string;
+}
+
+export interface V2AssessmentData {
+  summary: string;
+  hard_skills: Record<string, V2SkillScore>;
+  soft_skills: Record<string, V2SkillScore>;
+  tags: string[];
+  soft_skill_narrative: string;
+  highlights: string[];
+  areas_for_growth: { priority: string; title: string; detail: string }[];
+  untested_dimensions: string[];
+}
+
+// ===== 用户画像 =====
+
+export interface UserProfile {
+  user_id: string;
+  user_name: string;
+  team_id: string;
+  team_name?: string;
+  timestamp: string;
+  core_positioning: string;
+  overview_summary: string;
+  abilities: Record<HardSkillKey, Ability>;       // 硬技能（兼容旧UI）
+  soft_skills?: Record<SoftSkillKey, Ability>;     // 软实力
+  behavior_patterns?: BehaviorPatterns;
+  growth_suggestions: GrowthSuggestion[];
+  tags?: string[];
+  soft_skill_narrative?: string;
+  highlights?: string[];
+  leader_summary?: LeaderSummary;
+  v2_assessment?: V2AssessmentData;               // V2 原始画像数据
 }
 
 export interface BehaviorPatterns {
@@ -32,18 +119,10 @@ export interface GrowthSuggestion {
   priority: "high" | "medium" | "low";
 }
 
-export type SoftSkillKey = "workstyle" | "personality" | "learning" | "communication" | "leadership";
-
-export const softSkillLabels: Record<SoftSkillKey, string> = {
-  workstyle: "做事风格",
-  personality: "性格特质",
-  learning: "学习适应",
-  communication: "沟通协作",
-  leadership: "领导力",
-};
+// ===== 队长视角评估 =====
 
 export interface LeaderSkillAssessment {
-  dimension: AbilityKey | SoftSkillKey;
+  dimension: HardSkillKey | SoftSkillKey;
   score: number;
   status: VerifyStatus;
   summary: string;
@@ -63,19 +142,7 @@ export interface LeaderSummary {
   team_fit: TeamFit;
 }
 
-export interface UserProfile {
-  user_id: string;
-  user_name: string;
-  team_id: string;
-  team_name?: string;
-  timestamp: string;
-  core_positioning: string;
-  overview_summary: string;
-  abilities: Record<AbilityKey, Ability>;
-  behavior_patterns?: BehaviorPatterns;
-  growth_suggestions: GrowthSuggestion[];
-  leader_summary?: LeaderSummary;
-}
+// ===== 团队 =====
 
 export interface Team {
   team_id: string;
@@ -85,6 +152,8 @@ export interface Team {
   members: UserProfile[];
   created_at: string;
 }
+
+// ===== 聊天消息 =====
 
 export interface ChatMessage {
   id?: string;
@@ -98,31 +167,30 @@ export interface ChatMessage {
   insights?: string[];
 }
 
+// ===== 测评状态 =====
+
 export interface AssessmentState {
   current_expression: Expression;
-  covered_dimensions: Record<AbilityKey, DimensionStatus>;
+  covered_dimensions: Record<HardSkillKey, DimensionStatus>;
   key_events: { stress: boolean; conflict: boolean };
   elapsed_minutes: number;
   insights: { icon: string; text: string }[];
 }
 
+// ===== AI 响应（V2：纯文本 + 画像标记）=====
+
 export interface AIResponse {
-  reply: string;
+  reply: string;              // 纯文本回复
   emotion: Expression;
-  phase?: string;
-  scores_delta?: Partial<Record<AbilityKey, number>>;
-  event?: string;
-  profile_data?: Partial<UserProfile>;
   content: string;
   expression: Expression;
-  is_final?: boolean;
-  profile?: UserProfile;
-  dimension_update?: { dimension: AbilityKey; status: "in_progress" | "done" }[];
-  key_event?: "stress" | "conflict";
+  is_final?: boolean;         // 是否包含画像输出
+  profile_data?: Partial<UserProfile>;  // 解析后的画像
+  assessment_data?: V2AssessmentData;   // V2 原始画像
 }
 
 export interface DimensionMeta {
-  key: AbilityKey;
+  key: HardSkillKey;
   icon: string;
   name: string;
   shortName: string;

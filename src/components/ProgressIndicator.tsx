@@ -1,8 +1,8 @@
-import type { AbilityKey, DimensionStatus } from "@/types";
-import { dimensions } from "@/mock/data";
+import type { HardSkillKey, DimensionStatus } from "@/types";
+import { hardSkillMeta } from "@/types";
 
 interface ProgressIndicatorProps {
-  covered: Record<AbilityKey, DimensionStatus>;
+  covered: Record<HardSkillKey, DimensionStatus>;
 }
 
 const statusStyle: Record<DimensionStatus, { dot: string; text: string; pulse?: boolean }> = {
@@ -14,7 +14,7 @@ const statusStyle: Record<DimensionStatus, { dot: string; text: string; pulse?: 
 export function ProgressIndicator({ covered }: ProgressIndicatorProps) {
   return (
     <div className="space-y-2">
-      {dimensions.map((dim) => {
+      {hardSkillMeta.map((dim) => {
         const status = statusStyle[covered[dim.key]];
         return (
           <div key={dim.key} className="flex items-center justify-between text-xs">

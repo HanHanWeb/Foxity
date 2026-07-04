@@ -12,8 +12,8 @@ import { AbilityBarList } from "@/components/AbilityBarList";
 import { ScoreComparison } from "@/components/ScoreComparison";
 import { TagCloud } from "@/components/TagCloud";
 import { useStore } from "@/store/useStore";
-import type { AbilityKey } from "@/types";
-import { abilityLabels } from "@/types";
+import type { HardSkillKey } from "@/types";
+import { hardSkillLabels, softSkillLabels } from "@/types";
 
 export default function ProfilePage() {
   const params = useParams<{ teamId: string }>();
@@ -23,16 +23,20 @@ export default function ProfilePage() {
 
   const data = currentProfile ?? mockProfile;
 
-  const radarData = (Object.keys(data.abilities) as AbilityKey[]).map((key) => ({
+  const radarData = (Object.keys(data.abilities) as HardSkillKey[]).map((key) => ({
     ability: key,
-    label: abilityLabels[key],
+    label: hardSkillLabels[key],
     score: data.abilities[key].score,
     verified: data.abilities[key].verification_status,
   }));
 
-  const allInsights = (Object.keys(data.abilities) as AbilityKey[]).flatMap((key) =>
+  const allInsights = (Object.keys(data.abilities) as HardSkillKey[]).flatMap((key) =>
     data.abilities[key].insights.map((text) => ({ ability: key, text }))
   );
+
+  // V2 软实力数据
+  const softSkillData = data.v2_assessment?.soft_skills || {};
+  const softSkillEntries = Object.entries(softSkillData);
 
   return (
     <main className="min-h-screen bg-fox-cream/30 pb-12">
@@ -82,11 +86,37 @@ export default function ProfilePage() {
           <TabsList className="mb-6 grid w-full grid-cols-4">
             <TabsTrigger value="overview">概览</TabsTrigger>
             <TabsTrigger value="abilities">能力详解</TabsTrigger>
-            <TabsTrigger value="behavior">行为模式</TabsTrigger>
+            <TabsTrigger value="behavior">软实力</TabsTrigger>
             <TabsTrigger value="growth">成长建议</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* V2 标签 */}
+            {data.tags && data.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {data.tags.map((tag, idx) => (
+                  <Badge key={idx} variant="default" className="text-sm">{tag}</Badge>
+                ))}
+              </div>
+            )}
+
+            {/* V2 高亮 */}
+            {data.highlights && data.highlights.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>亮点</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {data.highlights.map((h, idx) => (
+                    <div key={idx} className="flex gap-2 text-sm text-fox-navy">
+                      <span className="text-fox-orange">✨</span>
+                      {h}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -138,58 +168,104 @@ export default function ProfilePage() {
           </TabsContent>
 
           <TabsContent value="behavior" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                {
-                  title: "压力反应模式",
-                  value: data.behavior_patterns?.stress_response ?? "思考型",
-                  desc: "面对压力时你倾向于先思考再行动，属于稳扎稳打型。",
-                  color: "bg-fox-navy",
-                },
-                {
-                  title: "决策风格",
-                  value: data.behavior_patterns?.decision_style ?? "理性型",
-                  desc: "做决策时依赖数据和逻辑分析，不易受情绪影响。",
-                  color: "bg-fox-orange",
-                },
-                {
-                  title: "协作倾向",
-                  value: data.behavior_patterns?.collaboration_style ?? "互补型",
-                  desc: "喜欢和不同背景的人合作，善于从差异中找价值。",
-                  color: "bg-fox-mint",
-                },
-                {
-                  title: "学习模式",
-                  value: data.behavior_patterns?.learning_style ?? "实践型",
-                  desc: "通过动手实践学得最快，理论需要落地才有意义。",
-                  color: "bg-fox-yellow",
-                },
-              ].map((item, idx) => (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.06 }}
-                >
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="mb-3 flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white ${item.color}`}
-                        >
-                          {idx + 1}
+            {/* V2 软实力叙述 */}
+            {data.soft_skill_narrative && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>软实力画像</CardTitle>
+                  <CardDescription>Foxity 的观察笔记</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed text-fox-navy">{data.soft_skill_narrative}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* V2 软实力分数 */}
+            {softSkillEntries.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>软实力维度</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {softSkillEntries.map(([key, val], idx) => {
+                    const label = softSkillLabels[key as keyof typeof softSkillLabels] || val.label || key;
+                    return (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: idx * 0.05 }}
+                      >
+                        <div className="mb-2 flex items-center justify-between text-sm">
+                          <span className="font-medium text-fox-navy">{label}</span>
+                          <span className="font-semibold text-fox-navy">{val.score}/10</span>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-fox-navy">{item.title}</h3>
-                          <Badge variant="outline">{item.value}</Badge>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-fox-gray-bg">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${val.score * 10}%` }}
+                            transition={{ duration: 0.6, delay: idx * 0.05 }}
+                            className="h-full rounded-full bg-fox-mint"
+                          />
                         </div>
-                      </div>
-                      <p className="text-sm text-fox-gray">{item.desc}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+                      </motion.div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 旧版行为模式（兼容） */}
+            {data.behavior_patterns && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  {
+                    title: "压力反应模式",
+                    value: data.behavior_patterns.stress_response,
+                    color: "bg-fox-navy",
+                  },
+                  {
+                    title: "决策风格",
+                    value: data.behavior_patterns.decision_style,
+                    color: "bg-fox-orange",
+                  },
+                  {
+                    title: "协作倾向",
+                    value: data.behavior_patterns.collaboration_style,
+                    color: "bg-fox-mint",
+                  },
+                  {
+                    title: "学习模式",
+                    value: data.behavior_patterns.learning_style,
+                    color: "bg-fox-yellow",
+                  },
+                ].map((item, idx) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.06 }}
+                  >
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="mb-3 flex items-center gap-3">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white ${item.color}`}
+                          >
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-fox-navy">{item.title}</h3>
+                            <Badge variant="outline">{item.value}</Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="growth" className="space-y-6">

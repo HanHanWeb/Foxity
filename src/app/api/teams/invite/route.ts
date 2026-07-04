@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "团队不存在" }, { status: 404 });
     }
 
-    const teamName = (teamRes.rows[0] as { team_name: string }).team_name;
+    const teamName = (teamRes.rows[0] as unknown as { team_name: string }).team_name;
     const inviter = inviterName || "你的队友";
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://foxity.app"}/team/${team_id}/join`;
 

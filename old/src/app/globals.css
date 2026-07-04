@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 32 100% 97%;
+    --foreground: 216 49% 23%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 49% 23%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 49% 23%;
+    --primary: 216 49% 33%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 29 100% 65%;
+    --secondary-foreground: 216 49% 23%;
+    --muted: 30 60% 95%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 29 100% 65%;
+    --accent-foreground: 216 49% 23%;
+    --destructive: 0 100% 71%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 29 100% 65%;
+    --radius: 1rem;
+
+    --fox-orange: #FF9F4D;
+    --fox-orange-light: #FFB87A;
+    --fox-orange-dark: #E88830;
+    --fox-cream: #FFF8F0;
+    --fox-navy: #2B4C7E;
+    --fox-navy-light: #3D6298;
+    --fox-mint: #6BCB9F;
+    --fox-coral: #FF6B6B;
+    --fox-yellow: #FFD93D;
+    --fox-gray: #8B8B8B;
+    --fox-gray-light: #E5E5E5;
+    --fox-gray-bg: #F7F7F7;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-fox-cream text-fox-navy antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(255, 159, 77, 0.18), transparent 34rem),
+      radial-gradient(circle at bottom right, rgba(107, 203, 159, 0.13), transparent 30rem);
+  }
+
+  ::selection {
+    @apply bg-fox-orange text-white;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .fox-card {
+    @apply rounded-2xl border border-fox-gray-light bg-white shadow-sm;
+  }
+}

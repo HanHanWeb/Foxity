@@ -1,0 +1,49 @@
+"use client";
+
+import { motion } from "framer-motion";
+import type { AbilityKey, VerifyStatus } from "@/types";
+import { dimensions } from "@/mock/data";
+import { Tag } from "@/components/Tag";
+
+interface AbilityBarProps {
+  dimension: AbilityKey;
+  score: number;
+  verified: VerifyStatus;
+  delay?: number;
+}
+
+const statusLabel: Record<VerifyStatus, { label: string; tone: "mint" | "yellow" | "gray" }> = {
+  verified: { label: "已验证", tone: "mint" },
+  unverified: { label: "待验证", tone: "yellow" },
+  untested: { label: "未涉及", tone: "gray" },
+};
+
+export function AbilityBar({ dimension, score, verified, delay = 0 }: AbilityBarProps) {
+  const meta = dimensions.find((item) => item.key === dimension);
+  const status = statusLabel[verified];
+  const fillColor =
+    verified === "verified" ? "bg-fox-orange" : verified === "unverified" ? "bg-fox-orange-light" : "bg-fox-gray";
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 font-medium text-fox-navy">
+          <span>{meta?.icon}</span>
+          <span>{meta?.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums font-semibold text-fox-navy">{score}/10</span>
+          <Tag label={status.label} tone={status.tone} />
+        </div>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-fox-gray-bg">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${score * 10}%` }}
+          transition={{ duration: 0.8, delay, ease: "easeOut" }}
+          className={`h-full rounded-full ${fillColor}`}
+        />
+      </div>
+    </div>
+  );
+}

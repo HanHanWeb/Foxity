@@ -131,6 +131,7 @@ export default function AuthPage() {
 
       if (!res.ok) {
         setRegError(data.error || "注册失败");
+        if (data.details) setRegError((prev) => `${prev}（${data.details}）`);
         return;
       }
 

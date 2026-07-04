@@ -101,7 +101,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Register error:", error);
     return NextResponse.json(
-      { error: "注册失败", details: error?.message },
+      { error: "注册失败", details: error?.message || String(error) },
       { status: 500 }
     );
   }

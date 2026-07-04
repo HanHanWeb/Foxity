@@ -35,7 +35,7 @@ export default function JoinTeamPage() {
             <img src="/fox.png" alt="Foxity" width={64} height={64} className="rounded-2xl" />
             <CardTitle className="mt-3">欢迎加入团队！</CardTitle>
             <CardDescription>
-              团队：{team.team_name} · {team.competition_type}
+              团队：{team.team_name}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

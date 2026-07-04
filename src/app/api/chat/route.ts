@@ -66,20 +66,103 @@ smile（微笑）、thinking（思考）、curious（好奇）、challenge（质
 ## 开始
 第一轮用轻松的语气开场，问问对方的基本情况和擅长的事。`;
 
+const LEADER_SUMMARY_PROMPT = `你是「Foxity」，现在以队长视角对成员进行客观评估。
+
+## 队长视角总结模式
+你需要以客观、直接的方式输出成员评估。
+
+### 语气要求
+- 客观、简洁，不用"嘿"、"我觉得"、"挺有意思的"等口语
+- 不绕弯子，直接给出判断和依据
+- 不评判这个人"好不好"，只描述"适合什么、不适合什么"
+- 每条判断必须附带对话中的具体证据
+
+### 硬技能维度（hard_skills）
+- background_market：市场分析
+- product：产品思维
+- tech：技术能力
+- finance：商业/财务
+- design：设计能力
+
+### 软实力维度（soft_skills）
+- workstyle：做事风格
+- personality：性格特质
+- learning：学习适应
+- communication：沟通协作
+- leadership：领导力
+
+### status 可选值
+- verified：已验证（有明确对话证据）
+- unverified：待验证（有少量信息但不充分）
+- untested：未涉及（对话中未提供足够证据）
+
+### key_quotes 的选取规则
+- 从对话记录中提取用户的原话，不是你自己总结的
+- 每条 quote 不超过 80 字
+- 每个维度最多 2 条 quote
+- 选择最能证明该维度评分的那句话
+- 如果该维度 untested，key_quotes 为空数组
+
+### 证据的撰写规则
+- 必须基于用户在对话中的实际回答
+- 不能用泛泛的"表现良好"、"能力较强"
+- 要写"用户在对话中描述了 X，使用了 Y 方法，达到了 Z 结果"
+- 如果该维度 untested，写"对话中未提供足够证据"
+
+### 输出格式（重要！必须严格输出 JSON，不要有其他文字）
+{
+  "leader_summary": {
+    "hard_skills": [
+      {
+        "dimension": "background_market",
+        "score": 8,
+        "status": "verified",
+        "summary": "能独立完成完整市场调研，框架感强",
+        "evidence": "描述了完整调研项目，给出竞品对比框架，主动说明数据来源和边界",
+        "key_quotes": ["我做过一个完整的市场调研，当时对比了三家竞品..."]
+      }
+    ],
+    "soft_skills": [
+      {
+        "dimension": "workstyle",
+        "score": 8,
+        "status": "verified",
+        "summary": "计划性强，习惯先框架后细节",
+        "evidence": "多次在截止日前完成高质量输出",
+        "key_quotes": ["我一般会先把框架搭好，再往里面填内容..."]
+      }
+    ],
+    "team_fit": {
+      "suitable": ["市场分析", "竞品调研", "需要结构化思维的任务"],
+      "not_suitable": ["需要大量技术实现的角色"],
+      "notes": "在团队讨论中可能不够主动，需要有人主动询问他的意见"
+    }
+  }
+}
+
+请根据对话记录，对所有 5 个硬技能维度和 5 个软实力维度都给出评估。`;
+
 export async function POST(req: Request) {
   try {
-    const { messages, user_name } = await req.json();
+    const { messages, user_name, viewer_role } = await req.json();
 
     // 清理历史消息：过滤掉空内容，避免污染模型上下文
     const cleanedMessages = (messages || [])
       .filter((msg: any) => msg && typeof msg.content === "string" && msg.content.trim().length > 0)
       .map((msg: any) => ({
-        role: msg.role === "fox" ? "assistant" : "user",
+        role: msg.role === "fox" || msg.role === "ai" ? "assistant" : "user",
         content: msg.content,
       }));
 
+    // 队长视角总结模式
+    const isLeaderMode = viewer_role === "leader";
+
+    const systemPrompt = isLeaderMode
+      ? `${LEADER_SUMMARY_PROMPT}\n\n以下是该成员与 Foxity 的完整对话记录，请基于此生成队长视角的评估：`
+      : SYSTEM_PROMPT;
+
     const formattedMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...cleanedMessages,
     ];
 
@@ -92,8 +175,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: MODEL,
         messages: formattedMessages,
-        temperature: 0.8,
-        max_tokens: 1024,
+        temperature: isLeaderMode ? 0.3 : 0.8,
+        max_tokens: isLeaderMode ? 4096 : 1024,
         response_format: { type: "json_object" },
       }),
     });
@@ -127,7 +210,7 @@ export async function POST(req: Request) {
           parsed = JSON.parse(match[0]);
         } catch {
           console.error("JSON parse error:", content);
-          parsed = {
+          parsed = isLeaderMode ? { leader_summary: null } : {
             reply: content,
             emotion: "thinking",
             phase: "background",
@@ -138,7 +221,7 @@ export async function POST(req: Request) {
         }
       } else {
         console.error("JSON parse error:", content);
-        parsed = {
+        parsed = isLeaderMode ? { leader_summary: null } : {
           reply: content || "嗯？我好像没听清，再说一遍？",
           emotion: "thinking",
           phase: "background",
@@ -147,6 +230,13 @@ export async function POST(req: Request) {
           profile_data: null,
         };
       }
+    }
+
+    // 队长视角模式直接返回 leader_summary
+    if (isLeaderMode) {
+      return NextResponse.json({
+        leader_summary: parsed.leader_summary || null,
+      });
     }
 
     const replyText = typeof parsed.reply === "string" ? parsed.reply.trim() : "";

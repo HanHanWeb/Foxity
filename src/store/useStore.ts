@@ -156,6 +156,11 @@ export const useStore = create<StoreState>((set, get) => ({
     const messages = [...get().messages, msg];
     set({ messages });
     persist({ ...get(), messages });
+    // 同步保存对话记录到 chat_history_{userId}
+    const profile = get().currentProfile;
+    if (profile?.user_id) {
+      writeStorage(`chat_history_${profile.user_id}`, messages);
+    }
   },
 
   updateScores: (delta) => {

@@ -32,6 +32,37 @@ export interface GrowthSuggestion {
   priority: "high" | "medium" | "low";
 }
 
+export type SoftSkillKey = "workstyle" | "personality" | "learning" | "communication" | "leadership";
+
+export const softSkillLabels: Record<SoftSkillKey, string> = {
+  workstyle: "做事风格",
+  personality: "性格特质",
+  learning: "学习适应",
+  communication: "沟通协作",
+  leadership: "领导力",
+};
+
+export interface LeaderSkillAssessment {
+  dimension: AbilityKey | SoftSkillKey;
+  score: number;
+  status: VerifyStatus;
+  summary: string;
+  evidence: string;
+  key_quotes: string[];
+}
+
+export interface TeamFit {
+  suitable: string[];
+  not_suitable: string[];
+  notes: string;
+}
+
+export interface LeaderSummary {
+  hard_skills: LeaderSkillAssessment[];
+  soft_skills: LeaderSkillAssessment[];
+  team_fit: TeamFit;
+}
+
 export interface UserProfile {
   user_id: string;
   user_name: string;
@@ -43,6 +74,7 @@ export interface UserProfile {
   abilities: Record<AbilityKey, Ability>;
   behavior_patterns?: BehaviorPatterns;
   growth_suggestions: GrowthSuggestion[];
+  leader_summary?: LeaderSummary;
 }
 
 export interface Team {

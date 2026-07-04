@@ -243,7 +243,7 @@ export default function TeamDashboardPage() {
                   transition={{ duration: 0.3, delay: idx * 0.05 }}
                 >
                   <Card className="cursor-pointer transition-all hover:shadow-md"
-                    onClick={() => router.push(`/profile/${params.teamId}?user=${encodeURIComponent(profile.user_id)}`)}
+                    onClick={() => router.push(`/team/${params.teamId}/member/${profile.user_id}`)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">

@@ -200,6 +200,7 @@ export async function POST(req: Request) {
     }
 
     let parsed;
+    let usedFallback = false;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
@@ -210,8 +211,9 @@ export async function POST(req: Request) {
           parsed = JSON.parse(match[0]);
         } catch {
           console.error("JSON parse error:", content);
+          usedFallback = true;
           parsed = isLeaderMode ? { leader_summary: null } : {
-            reply: content,
+            reply: "",
             emotion: "thinking",
             phase: "background",
             scores_delta: {},
@@ -220,9 +222,10 @@ export async function POST(req: Request) {
           };
         }
       } else {
-        console.error("JSON parse error:", content);
+        console.error("JSON parse error: no JSON found in content:", content);
+        usedFallback = true;
         parsed = isLeaderMode ? { leader_summary: null } : {
-          reply: content || "嗯？我好像没听清，再说一遍？",
+          reply: content,
           emotion: "thinking",
           phase: "background",
           scores_delta: {},
@@ -241,6 +244,12 @@ export async function POST(req: Request) {
 
     const replyText = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
 
+    // 当 JSON 解析失败时，content 本身可能就是模型的纯文本回复，直接用它
+    let finalReply = replyText;
+    if (usedFallback && content && content.trim()) {
+      finalReply = content.trim();
+    }
+
     // 空回复时，根据对话轮次生成能推进对话的 fallback
     const fallbackReplies = [
       "嗯，我刚刚在想你说的话。能再具体说说吗？比如举个你做过的项目的例子？",
@@ -251,7 +260,7 @@ export async function POST(req: Request) {
     const fallbackIndex = cleanedMessages.filter((m: any) => m.role === "user").length % fallbackReplies.length;
 
     return NextResponse.json({
-      reply: replyText || fallbackReplies[fallbackIndex],
+      reply: finalReply || fallbackReplies[fallbackIndex],
       emotion: parsed.emotion || "thinking",
       phase: parsed.phase || "background",
       scores_delta: parsed.scores_delta || {},

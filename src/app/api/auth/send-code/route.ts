@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     // 2. 生成验证码并发送邮件（邮箱统一小写存储）
     const normalizedEmail = email.trim().toLowerCase();
-    const code = createCode(normalizedEmail);
+    const code = await createCode(normalizedEmail);
     try {
       await sendMail({
         to: normalizedEmail,

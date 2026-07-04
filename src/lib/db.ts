@@ -24,6 +24,7 @@ const EXPECTED_COLUMNS: Record<string, string[]> = {
   chat_history: ["id", "user_id", "team_id", "role", "content", "emotion", "created_at"],
   users: ["user_id", "username", "password_hash", "email", "created_at"],
   sessions: ["token", "user_id", "expires_at", "created_at"],
+  email_codes: ["email", "code", "expires_at", "verified", "created_at"],
 };
 
 // 校验已存在的表是否拥有期望的列；不匹配则 DROP 重建
@@ -97,6 +98,14 @@ const CREATE_SESSIONS = `CREATE TABLE IF NOT EXISTS sessions (
   FOREIGN KEY (user_id) REFERENCES users(user_id)
 )`;
 
+const CREATE_EMAIL_CODES = `CREATE TABLE IF NOT EXISTS email_codes (
+  email TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  verified INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+)`;
+
 // 建表（幂等执行，应用启动时调用一次即可）
 export async function initDb() {
   const db = getDb();
@@ -107,6 +116,7 @@ export async function initDb() {
   await ensureTableSchema(db, "chat_history", CREATE_CHAT_HISTORY);
   await ensureTableSchema(db, "users", CREATE_USERS);
   await ensureTableSchema(db, "sessions", CREATE_SESSIONS);
+  await ensureTableSchema(db, "email_codes", CREATE_EMAIL_CODES);
 
   // 建表（IF NOT EXISTS 保证幂等）
   await db.executeMultiple(`
@@ -115,6 +125,7 @@ export async function initDb() {
     ${CREATE_CHAT_HISTORY};
     ${CREATE_USERS};
     ${CREATE_SESSIONS};
+    ${CREATE_EMAIL_CODES};
 
     CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team_id);
     CREATE INDEX IF NOT EXISTS idx_chat_user ON chat_history(user_id);

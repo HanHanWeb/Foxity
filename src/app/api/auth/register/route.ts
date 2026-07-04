@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // 校验邮箱验证码
-    if (!verifyCode(normalizedEmail, code.trim())) {
+    if (!(await verifyCode(normalizedEmail, code.trim()))) {
       return NextResponse.json(
         { error: "验证码错误或已过期" },
         { status: 400 }

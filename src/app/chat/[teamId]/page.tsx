@@ -61,8 +61,11 @@ function ChatPageInner() {
     addMessage(userMsg);
     setIsAIThinking(true);
 
+    // 读取最新的 store messages（避免闭包旧值）
+    const latestMessages = useStore.getState().messages;
+
     try {
-      const response = await sendToAI([...messages, userMsg], userName);
+      const response = await sendToAI([...latestMessages], userName);
       const aiMsg: ChatMessageType = {
         role: "fox",
         content: response.reply,

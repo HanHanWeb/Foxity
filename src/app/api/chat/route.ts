@@ -103,25 +103,51 @@ export async function POST(req: Request) {
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
+    let content: string = data.choices?.[0]?.message?.content || "";
+
+    // 部分模型会用 markdown 代码块包裹 JSON，清理掉
+    content = content.trim();
+    if (content.startsWith("```")) {
+      content = content.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    }
 
     let parsed;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      console.error("JSON parse error:", content);
-      parsed = {
-        reply: content,
-        emotion: "thinking",
-        phase: "background",
-        scores_delta: {},
-        event: null,
-        profile_data: null,
-      };
+      // 尝试从文本中提取第一个 JSON 对象
+      const match = content.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch {
+          console.error("JSON parse error:", content);
+          parsed = {
+            reply: content,
+            emotion: "thinking",
+            phase: "background",
+            scores_delta: {},
+            event: null,
+            profile_data: null,
+          };
+        }
+      } else {
+        console.error("JSON parse error:", content);
+        parsed = {
+          reply: content || "嗯？我好像没听清，再说一遍？",
+          emotion: "thinking",
+          phase: "background",
+          scores_delta: {},
+          event: null,
+          profile_data: null,
+        };
+      }
     }
 
+    const replyText = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+
     return NextResponse.json({
-      reply: parsed.reply || "嗯？我好像没听清，再说一遍？",
+      reply: replyText || "嗯？我好像没听清，再说一遍？",
       emotion: parsed.emotion || "smile",
       phase: parsed.phase || "background",
       scores_delta: parsed.scores_delta || {},

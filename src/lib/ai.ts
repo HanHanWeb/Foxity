@@ -2,6 +2,9 @@ import type { AIResponse, ChatMessage } from "@/types";
 
 export async function sendToAI(messages: ChatMessage[], userName?: string): Promise<AIResponse> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
@@ -11,7 +14,10 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
         messages,
         user_name: userName,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);

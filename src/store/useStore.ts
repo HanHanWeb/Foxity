@@ -89,10 +89,13 @@ export const useStore = create<StoreState>((set, get) => ({
       const res = await fetch(`/api/teams/${teamId}`);
       if (!res.ok) return;
       const team: Team = await res.json();
-      set({
+      set((state) => ({
         currentTeam: team,
+        teams: state.teams.some((t) => t.team_id === team.team_id)
+          ? state.teams.map((t) => (t.team_id === team.team_id ? team : t))
+          : [...state.teams, team],
         profiles: team.members.length > 0 ? team.members : mockProfiles,
-      });
+      }));
     } catch (e) {
       console.error("loadTeam error:", e);
     }

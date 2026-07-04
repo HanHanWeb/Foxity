@@ -114,7 +114,21 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   createTeam: async (name, type, organizer) => {
-    const teamId = createTeamCode();
+    let teamId = createTeamCode();
+    // 查重，确保 team_id 不重复
+    try {
+      let unique = false;
+      while (!unique) {
+        const res = await fetch(`/api/teams/${teamId}`);
+        if (res.status === 404) {
+          unique = true;
+        } else {
+          teamId = createTeamCode();
+        }
+      }
+    } catch (e) {
+      console.error("createTeam dedup error:", e);
+    }
     const team: Team = {
       team_id: teamId,
       team_name: name,

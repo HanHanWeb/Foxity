@@ -17,7 +17,8 @@ export function createId(prefix = "id") {
 
 export function createTeamCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `FOX${Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
+  // 6 位混合，无固定前缀，避免太规律
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 export function clampScore(score: number) {

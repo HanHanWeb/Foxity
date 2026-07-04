@@ -91,7 +91,7 @@ export default function CreateTeamPage() {
                 </div>
 
                 <div className="grid gap-2 pt-2 md:grid-cols-2">
-                  <Button variant="secondary" onClick={() => router.push(`/chat/${teamCode}`)}>
+                  <Button variant="secondary" onClick={() => router.push(`/team/${teamCode}/join`)}>
                     开始我的测评
                   </Button>
                   <Button variant="outline" onClick={() => router.push(`/team/${teamCode}`)}>

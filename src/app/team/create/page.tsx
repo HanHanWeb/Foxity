@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Users, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CreateTeamSkeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +51,11 @@ export default function CreateTeamPage() {
   const inviteLink = teamCode ? `${mounted ? window.location.origin : ""}/team/${teamCode}/join` : "";
 
   if (loading) {
-    return <CreateTeamSkeleton />;
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-fox-gray" />
+      </main>
+    );
   }
 
   return (

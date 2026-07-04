@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, MessageCircle, Radar, Compass, Users } from "lucide-react";
+import { ArrowRight, MessageCircle, Radar, Compass, Users, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomeNavbar } from "@/components/Layout/HomeNavbar";
 import { JoinTeamDialog } from "@/components/JoinTeamDialog";
 import { useAuth } from "@/lib/auth";
-import { HomeSkeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,7 +15,11 @@ export default function HomePage() {
   const [open, setOpen] = useState(false);
 
   if (loading) {
-    return <HomeSkeleton />;
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-fox-gray" />
+      </main>
+    );
   }
 
   return (

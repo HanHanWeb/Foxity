@@ -219,7 +219,7 @@ export const useStore = create<StoreState>((set, get) => ({
     };
     const welcome: ChatMessage = {
       role: "fox",
-      content: `嗨，${userName}！我是狐狸学长～我们来聊聊天吧，你觉得自己比较擅长的3件事是什么？最好带点例子哦。`,
+      content: `嗨，${userName}！我是 Foxity～我们来聊聊天吧，你觉得自己比较擅长的3件事是什么？最好带点例子哦。`,
       emotion: "smile",
       timestamp: Date.now(),
     };

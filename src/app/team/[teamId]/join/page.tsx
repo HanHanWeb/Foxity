@@ -32,7 +32,7 @@ export default function JoinTeamPage() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-md">
         <Card>
           <CardHeader className="items-center text-center">
-            <img src="/fox.png" alt="狐狸学长" width={64} height={64} className="rounded-2xl" />
+            <img src="/fox.png" alt="Foxity" width={64} height={64} className="rounded-2xl" />
             <CardTitle className="mt-3">欢迎加入团队！</CardTitle>
             <CardDescription>
               团队：{team.team_name} · {team.competition_type}

@@ -196,7 +196,7 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>成长建议</CardTitle>
-                <CardDescription>狐狸学长的个性化建议</CardDescription>
+                <CardDescription>Foxity 的个性化建议</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.growth_suggestions.map((suggestion, idx) => (

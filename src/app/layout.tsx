@@ -9,7 +9,7 @@ const notoSansSc = Noto_Sans_SC({
 });
 
 export const metadata: Metadata = {
-  title: "狐狸学长",
+  title: "Foxity",
   description: "AI 能动性驱动的团队能力测评产品",
   icons: {
     icon: "/fox.png",

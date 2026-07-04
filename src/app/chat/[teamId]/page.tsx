@@ -188,10 +188,10 @@ function ChatPageInner() {
             </SheetContent>
           </Sheet>
 
-          <img src="/fox.png" alt="狐狸学长" width={40} height={40} className="rounded-lg" />
+          <img src="/fox.png" alt="Foxity" width={40} height={40} className="rounded-lg" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-fox-navy">狐狸学长</h1>
+              <h1 className="text-sm font-bold text-fox-navy">Foxity</h1>
               {isAIThinking && <span className="text-xs text-fox-gray">正在思考...</span>}
             </div>
             <p className="text-xs text-fox-gray">
@@ -296,7 +296,7 @@ function ChatPageInner() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="回复狐狸学长..."
+              placeholder="回复 Foxity..."
               className="rounded-xl"
             />
             <Button variant="secondary" onClick={handleSend} disabled={!input.trim() || isAIThinking}>

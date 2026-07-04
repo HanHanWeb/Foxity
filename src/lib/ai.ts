@@ -39,7 +39,7 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
   } catch (error) {
     console.error("sendToAI error:", error);
     return {
-      reply: "哎呀，狐狸学长刚刚走神了，再说一遍好不好？🦊",
+      reply: "哎呀，Foxity 刚刚走神了，再说一遍好不好？🦊",
       emotion: "curious",
       content: "",
       expression: "curious",

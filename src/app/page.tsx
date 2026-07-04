@@ -2,53 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { Users, Target, Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { HomeNavbar } from "@/components/Layout/HomeNavbar";
-
-const features = [
-  {
-    icon: <Target className="h-6 w-6" />,
-    title: "自适应测评",
-    description: "AI 根据你的回答动态调整问题，不走固定流程。",
-    tone: "from-fox-orange/10 to-fox-cream",
-  },
-  {
-    icon: <LayersIcon className="h-6 w-6" />,
-    title: "三层画像",
-    description: "技能层 → 行为模式层 → 自我认知层，越聊越深。",
-    tone: "from-fox-mint/10 to-fox-cream",
-  },
-  {
-    icon: <Sparkles className="h-6 w-6" />,
-    title: "狐狸学长",
-    description: "可爱但专业，会挑战你，不只迎合你。",
-    tone: "from-fox-navy/10 to-fox-cream",
-  },
-];
-
-function LayersIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-      <path d="m22 12.65-9.17 4.17a2 2 0 0 1-1.66 0L2 12.65" />
-      <path d="m22 17.65-9.17 4.17a2 2 0 0 1-1.66 0L2 17.65" />
-    </svg>
-  );
-}
 
 export default function HomePage() {
   const router = useRouter();
@@ -63,88 +23,93 @@ export default function HomePage() {
   return (
     <main className="min-h-screen">
       <HomeNavbar />
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 pb-20 pt-28 md:grid-cols-2 md:items-center md:pt-32">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div className="mb-6 flex items-center gap-2">
-            <img src="/fox.png" alt="狐狸学长" width={48} height={48} className="rounded-xl" />
-            <span className="text-lg font-bold text-fox-navy">狐狸学长</span>
-          </div>
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-[#fbf7ef] px-6 py-28">
+        <div className="pointer-events-none absolute -left-24 top-10 h-80 w-80 rounded-full bg-fox-orange/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-10 right-12 h-72 w-72 rounded-full bg-fox-mint/10 blur-3xl" />
 
-          <h1 className="text-balance text-4xl font-extrabold leading-tight text-fox-navy md:text-5xl">
-            找到你在团队中的
-            <span className="text-fox-orange">最佳位置</span>
-          </h1>
-          <p className="mt-4 text-base text-fox-gray md:text-lg">
-            和 AI 学长聊 20 分钟，发现你没意识到的能力盲区。
-          </p>
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 md:grid-cols-[1fr_0.95fr]">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div className="mb-12 flex items-center gap-3">
+              <img src="/fox.png" alt="Foxity" width={32} height={32} className="rounded-full" />
+              <span className="text-base font-semibold text-[#8a96aa]">Foxity</span>
+            </div>
 
-          <div className="mt-8 flex flex-col gap-3">
-            <Button size="lg" onClick={() => router.push("/team/create")} className="w-full justify-center">
-              我是组织者，创建团队
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => setOpen(true)} className="w-full justify-center">
-              我有邀请码，加入团队
-            </Button>
-          </div>
+            <h1 className="text-balance text-[44px] font-medium leading-[1.1] tracking-[-0.03em] text-[#425a7a] md:text-[64px]">
+              团队中的你，
+              <br />
+              <span className="text-[#f2aa72]">比你想象的更特别</span>
+            </h1>
+            <p className="mt-8 text-lg font-medium text-[#9ca7b7] md:text-xl">
+              和 Foxity 聊聊天，慢慢看清你在团队里的样子。
+            </p>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {features.map((feature, idx) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 + idx * 0.08 }}
-                className={`rounded-2xl border border-fox-gray-light bg-gradient-to-br ${feature.tone} p-5 shadow-sm`}
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <Button
+                size="lg"
+                onClick={() => router.push("/team/create")}
+                className="h-12 rounded-full bg-[#425a7a] px-8 text-base font-semibold text-white shadow-lg shadow-[#425a7a]/15 hover:bg-[#344866]"
               >
-                <div className="mb-3 inline-flex rounded-xl bg-white/70 p-2 text-fox-navy">
-                  {feature.icon}
+                创建团队
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setOpen(true)}
+                className="h-12 rounded-full border-[#d9dee8] bg-white/70 px-8 text-base font-semibold text-[#425a7a] shadow-sm hover:bg-white"
+              >
+                加入团队
+              </Button>
+            </div>
+
+            <div className="mt-16 flex flex-wrap gap-4">
+              {["自然对话", "十维能力", "陪伴探索", "团队视角"].map((label, index) => (
+                <div key={label} className="flex items-center gap-2 rounded-full border border-[#dfe4ec] bg-white/60 px-4 py-2 text-sm font-semibold text-[#8a96aa] shadow-sm backdrop-blur">
+                  <span className="text-xs">{["▢", "◈", "✣", "♙"][index]}</span>
+                  {label}
                 </div>
-                <h3 className="text-sm font-bold text-fox-navy">{feature.title}</h3>
-                <p className="mt-1 text-xs text-fox-gray">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+              ))}
+            </div>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative hidden items-center justify-center md:flex"
-        >
-          <div className="absolute -z-10 h-[420px] w-[420px] rounded-full bg-fox-orange/20 blur-3xl" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="relative hidden min-h-[520px] items-center justify-center md:flex"
+          >
+            <div className="absolute right-0 top-6 h-[360px] w-[360px] rounded-full bg-white shadow-[0_30px_80px_rgba(242,170,114,0.18)] lg:h-[420px] lg:w-[420px]" />
+            <div className="absolute right-16 top-24 h-[220px] w-[220px] rounded-full bg-[#fbf7ef] lg:right-20 lg:top-28 lg:h-[260px] lg:w-[260px]" />
 
-          <div className="relative">
-            <div className="flex h-[340px] w-[340px] items-center justify-center rounded-full bg-fox-cream shadow-xl">
-              <img src="/fox.png" alt="狐狸学长" width={240} height={240} className="rounded-3xl" />
+            <div className="relative z-10 flex h-[180px] w-[180px] items-center justify-center rounded-full lg:h-[220px] lg:w-[220px]">
+              <img src="/fox.png" alt="Foxity" width={164} height={164} className="rounded-3xl lg:h-[190px] lg:w-[190px]" />
             </div>
 
             <motion.div
-              animate={{ y: [0, -10, 0] }}
+              animate={{ y: [0, -8, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -left-6 top-8 rounded-full bg-white px-4 py-2 text-xs font-semibold text-fox-navy shadow-md"
+              className="absolute left-12 top-16 z-20 rounded-full bg-white/85 px-5 py-3 text-xs font-semibold text-[#8a96aa] shadow-lg shadow-[#425a7a]/5 backdrop-blur"
             >
-              📊 市场分析 8/10 ✅
+              💬 你其实挺会沟通的
             </motion.div>
 
             <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-              className="absolute -right-4 top-20 rounded-full bg-white px-4 py-2 text-xs font-semibold text-fox-navy shadow-md"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              className="absolute right-0 top-40 z-20 rounded-full bg-white/85 px-5 py-3 text-xs font-semibold text-[#8a96aa] shadow-lg shadow-[#425a7a]/5 backdrop-blur"
             >
-              压力反应：行动型
+              ✨ 这里可能需要你
             </motion.div>
 
             <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
-              className="absolute bottom-8 left-6 rounded-full bg-white px-4 py-2 text-xs font-semibold text-fox-navy shadow-md"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="absolute bottom-20 left-16 z-20 rounded-full bg-white/85 px-5 py-3 text-xs font-semibold text-[#8a96aa] shadow-lg shadow-[#425a7a]/5 backdrop-blur"
             >
-              💡 发现：你有产品思维潜力
+              📊 团队分析 8/10
             </motion.div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>

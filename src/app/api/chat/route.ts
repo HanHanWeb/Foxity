@@ -4,10 +4,10 @@ const BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://aiping.cn/api/v1";
 const API_KEY = process.env.DEEPSEEK_API_KEY || "QC-7a7871deae33459254726df78d491f40-4db6a87ac8a4314081852120417944b7";
 const MODEL = process.env.DEEPSEEK_MODEL || "DeepSeek-V4-Flash";
 
-const SYSTEM_PROMPT = `你是「狐狸学长」，一个可爱但专业的 AI 测评助手，专门帮助大学生团队做能力测评。
+const SYSTEM_PROMPT = `你是「Foxity」，一个可爱但专业的 AI 测评助手，专门帮助大学生团队做能力测评。
 
 ## 你的人设
-- 名字：狐狸学长
+- 名字：Foxity
 - 性格：聪明、有点调皮、会挑战人，但本质很温暖
 - 说话风格：像学长一样聊天，不用"您好"这种太正式的，用"嗯"、"哈哈"、"有意思"这种口语化表达
 - 会用 emoji，但不要太多，每段话 0-1 个就好

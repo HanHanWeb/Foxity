@@ -17,7 +17,7 @@ const navLinks: NavLink[] = [
     children: [
       { label: "自适应测评", href: "/#features", desc: "AI 动态调整问题" },
       { label: "三层画像", href: "/#features", desc: "技能·行为·认知" },
-      { label: "狐狸学长", href: "/#features", desc: "可爱但专业" },
+      { label: "Foxity", href: "/#features", desc: "可爱但专业" },
     ],
   },
   {
@@ -52,8 +52,8 @@ export function HomeNavbar() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-fox-gray-light/60 bg-white/60 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/fox.png" alt="狐狸学长" width={36} height={36} className="rounded-lg" />
-          <span className="text-base font-bold text-fox-navy">狐狸学长</span>
+          <img src="/fox.png" alt="Foxity" width={36} height={36} className="rounded-lg" />
+          <span className="text-base font-bold text-fox-navy">Foxity</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" onMouseLeave={handleLeave}>

@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { competitionTypes } from "@/mock/data";
 import { useStore } from "@/store/useStore";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -18,15 +16,13 @@ export default function CreateTeamPage() {
   const createTeam = useStore((state) => state.createTeam);
 
   const [teamName, setTeamName] = useState("");
-  const [competition, setCompetition] = useState("挑战杯");
   const [organizerName, setOrganizerName] = useState("");
-  const [role, setRole] = useState("队长");
   const [teamCode, setTeamCode] = useState<string | null>(null);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!teamName.trim() || !organizerName.trim()) return;
-    const code = createTeam(teamName.trim(), competition, organizerName.trim());
+    const code = createTeam(teamName.trim(), "默认", organizerName.trim());
     setTeamCode(code);
   };
 
@@ -46,7 +42,7 @@ export default function CreateTeamPage() {
             <CardDescription>
               {teamCode
                 ? "把链接发给队友，他们完成测评后你就能看到全队能力矩阵。"
-                : "填写团队信息，生成邀请链接。"}
+                : "填写团队信息，生成邀请链接。创建者默认是队长。"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -64,20 +60,6 @@ export default function CreateTeamPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="competition">比赛类型</Label>
-                  <Select value={competition} onValueChange={setCompetition}>
-                    <SelectTrigger id="competition">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {competitionTypes.map((type) => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
                   <Label htmlFor="organizer">你的名字</Label>
                   <Input
                     id="organizer"
@@ -86,19 +68,6 @@ export default function CreateTeamPage() {
                     onChange={(e) => setOrganizerName(e.target.value)}
                     required
                   />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="role">你的角色</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger id="role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="队长">队长</SelectItem>
-                      <SelectItem value="队员">队员</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <Button type="submit" variant="secondary" className="w-full">

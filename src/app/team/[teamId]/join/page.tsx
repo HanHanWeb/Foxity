@@ -20,9 +20,9 @@ export default function JoinTeamPage() {
   const team = teams.find((item) => item.team_id === params.teamId) ?? mockTeam;
   const [name, setName] = useState("");
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!name.trim()) return;
-    const profile = joinTeam(params.teamId, name.trim());
+    const profile = await joinTeam(params.teamId, name.trim());
     router.push(`/chat/${params.teamId}?user=${encodeURIComponent(name.trim())}`);
     void profile;
   };

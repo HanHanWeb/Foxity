@@ -9,8 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/store/useStore";
 import { mockProfiles } from "@/mock/data";
-import { getChatHistory } from "@/lib/storage";
-import { abilityLabels, softSkillLabels, type LeaderSummary, type LeaderSkillAssessment } from "@/types";
+import { abilityLabels, softSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
@@ -34,7 +33,29 @@ export default function MemberSummaryPage() {
     return allProfiles.find((p) => p.user_id === params.userId) ?? allProfiles[0];
   }, [profiles, params.userId]);
 
-  const chatHistory = useMemo(() => getChatHistory(params.userId), [params.userId]);
+  const [chatHistory, setChatHistory] = useState<ChatMessageType[]>([]);
+
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const res = await fetch(`/api/chat-history/${params.userId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setChatHistory(
+            (data as any[]).map((m) => ({
+              role: m.role,
+              content: m.content,
+              emotion: m.emotion,
+              timestamp: m.created_at,
+            }))
+          );
+        }
+      } catch (e) {
+        console.error("load chat history error:", e);
+      }
+    };
+    loadChatHistory();
+  }, [params.userId]);
 
   useEffect(() => {
     const generateSummary = async () => {

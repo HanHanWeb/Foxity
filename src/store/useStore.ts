@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { initialAssessmentState, mockMessages, mockProfiles, mockTeam } from "@/mock/data";
+import { initialAssessmentState, mockProfiles, mockTeam } from "@/mock/data";
 import type {
   AbilityKey,
   AssessmentState,
@@ -12,7 +12,6 @@ import type {
   UserProfile,
 } from "@/types";
 import { createId, createTeamCode } from "@/lib/utils";
-import { readStorage, writeStorage } from "@/lib/storage";
 
 interface StoreState {
   currentTeam: Team | null;
@@ -23,13 +22,14 @@ interface StoreState {
   messages: ChatMessage[];
   assessmentState: AssessmentState;
   hydrate: () => void;
-  createTeam: (name: string, type: string, organizer: string) => string;
-  joinTeam: (teamId: string, userName: string) => UserProfile;
+  loadTeam: (teamId: string) => Promise<void>;
+  createTeam: (name: string, type: string, organizer: string) => Promise<string>;
+  joinTeam: (teamId: string, userName: string) => Promise<UserProfile>;
   addMessage: (msg: ChatMessage) => void;
   updateScores: (delta: Partial<Record<AbilityKey, number>>) => void;
   markEvent: (event: string) => void;
   setProfile: (data: Partial<UserProfile>) => void;
-  saveProfile: () => void;
+  saveProfile: () => Promise<void>;
   startConversation: (userName: string) => void;
   updateExpression: (expr: Expression) => void;
   updateDimensionStatus: (dim: AbilityKey, status: DimensionStatus) => void;
@@ -45,7 +45,7 @@ function getInitialProfile(): UserProfile {
     team_name: "挑战杯-智慧农业项目组",
     timestamp: new Date().toISOString(),
     core_positioning: "待测评",
-    overview_summary: "完成测评后，狐狸学工会为你生成完整的个人画像。",
+    overview_summary: "完成测评后，Foxity 会为你生成完整的个人画像。",
     abilities: {
       background_market: {
         score: 0,
@@ -82,14 +82,6 @@ function getInitialProfile(): UserProfile {
   };
 }
 
-function persist(state: Pick<StoreState, "teams" | "profiles" | "messages" | "assessmentState" | "currentProfile">) {
-  writeStorage("teams", state.teams);
-  writeStorage("profiles", state.profiles);
-  writeStorage("messages", state.messages);
-  writeStorage("assessment", state.assessmentState);
-  writeStorage("currentProfile", state.currentProfile);
-}
-
 export const useStore = create<StoreState>((set, get) => ({
   currentTeam: mockTeam,
   teams: [mockTeam],
@@ -100,22 +92,28 @@ export const useStore = create<StoreState>((set, get) => ({
   assessmentState: initialAssessmentState,
 
   hydrate: () => {
-    const teams = readStorage<Team[]>("teams", [mockTeam]);
-    const profiles = readStorage<UserProfile[]>("profiles", mockProfiles);
-    const messages = readStorage<ChatMessage[]>("messages", []);
-    const assessmentState = readStorage<AssessmentState>("assessment", initialAssessmentState);
-    const currentProfile = readStorage<UserProfile | null>("currentProfile", null);
     set({
-      teams,
-      profiles,
-      messages,
-      assessmentState,
-      currentProfile,
-      currentTeam: teams[0] ?? null,
+      teams: [mockTeam],
+      profiles: mockProfiles,
+      currentTeam: mockTeam,
     });
   },
 
-  createTeam: (name, type, organizer) => {
+  loadTeam: async (teamId) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}`);
+      if (!res.ok) return;
+      const team: Team = await res.json();
+      set({
+        currentTeam: team,
+        profiles: team.members.length > 0 ? team.members : mockProfiles,
+      });
+    } catch (e) {
+      console.error("loadTeam error:", e);
+    }
+  },
+
+  createTeam: async (name, type, organizer) => {
     const teamId = createTeamCode();
     const team: Team = {
       team_id: teamId,
@@ -125,41 +123,66 @@ export const useStore = create<StoreState>((set, get) => ({
       members: [],
       created_at: new Date().toISOString(),
     };
-    const teams = [team, ...get().teams];
-    set({ teams, currentTeam: team });
-    persist({ ...get(), teams });
+    // 写入数据库
+    try {
+      await fetch("/api/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(team),
+      });
+    } catch (e) {
+      console.error("createTeam db error:", e);
+    }
+    set({ teams: [team, ...get().teams], currentTeam: team });
     return teamId;
   },
 
-  joinTeam: (teamId, userName) => {
+  joinTeam: async (teamId, userName) => {
     const profile: UserProfile = {
       ...getInitialProfile(),
       user_id: createId("user"),
       user_name: userName,
       team_id: teamId,
     };
-    const profiles = [profile, ...get().profiles];
-    const teams = get().teams.map((team) =>
-      team.team_id === teamId
-        ? {
-            ...team,
-            members: [profile, ...team.members.filter((m) => m.user_id !== profile.user_id)],
-          }
-        : team
-    );
-    set({ profiles, currentProfile: profile, teams });
-    persist({ ...get(), teams, profiles, currentProfile: profile });
+    // 写入数据库
+    try {
+      await fetch("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          user_name: profile.user_name,
+          team_id: profile.team_id,
+          data: profile,
+        }),
+      });
+    } catch (e) {
+      console.error("joinTeam db error:", e);
+    }
+    set({
+      profiles: [profile, ...get().profiles],
+      currentProfile: profile,
+    });
     return profile;
   },
 
   addMessage: (msg) => {
     const messages = [...get().messages, msg];
     set({ messages });
-    persist({ ...get(), messages });
-    // 同步保存对话记录到 chat_history_{userId}
+    // 同步保存对话记录到数据库
     const profile = get().currentProfile;
     if (profile?.user_id) {
-      writeStorage(`chat_history_${profile.user_id}`, messages);
+      fetch("/api/chat-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          team_id: profile.team_id,
+          role: msg.role,
+          content: msg.content,
+          emotion: msg.emotion ?? msg.expression,
+        }),
+      }).catch((e) => console.error("save chat-history error:", e));
     }
   },
 
@@ -201,20 +224,28 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ currentProfile: updated });
   },
 
-  saveProfile: () => {
+  saveProfile: async () => {
     const profile = get().currentProfile;
     if (!profile) return;
-    const profiles = [profile, ...get().profiles.filter((p) => p.user_id !== profile.user_id)];
-    const teams = get().teams.map((team) =>
-      team.team_id === profile.team_id
-        ? {
-            ...team,
-            members: [profile, ...team.members.filter((m) => m.user_id !== profile.user_id)],
-          }
-        : team
-    );
-    set({ profiles, teams });
-    persist({ ...get(), profiles, teams });
+    // 写入数据库
+    try {
+      await fetch("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          user_name: profile.user_name,
+          team_id: profile.team_id,
+          data: profile,
+        }),
+      });
+    } catch (e) {
+      console.error("saveProfile db error:", e);
+    }
+    // 更新本地 state
+    set({
+      profiles: [profile, ...get().profiles.filter((p) => p.user_id !== profile.user_id)],
+    });
   },
 
   startConversation: (userName) => {
@@ -228,9 +259,7 @@ export const useStore = create<StoreState>((set, get) => ({
       emotion: "smile",
       timestamp: Date.now(),
     };
-    set({ currentProfile: profile, messages: [welcome], assessmentState: initialAssessmentState });
-    persist({
-      ...get(),
+    set({
       currentProfile: profile,
       messages: [welcome],
       assessmentState: initialAssessmentState,
@@ -240,7 +269,6 @@ export const useStore = create<StoreState>((set, get) => ({
   updateExpression: (expr) => {
     const assessmentState = { ...get().assessmentState, current_expression: expr };
     set({ assessmentState });
-    persist({ ...get(), assessmentState });
   },
 
   updateDimensionStatus: (dim, status) => {
@@ -249,7 +277,6 @@ export const useStore = create<StoreState>((set, get) => ({
       covered_dimensions: { ...get().assessmentState.covered_dimensions, [dim]: status },
     };
     set({ assessmentState });
-    persist({ ...get(), assessmentState });
   },
 
   triggerKeyEvent: (type) => {
@@ -258,7 +285,6 @@ export const useStore = create<StoreState>((set, get) => ({
       key_events: { ...get().assessmentState.key_events, [type]: true },
     };
     set({ assessmentState });
-    persist({ ...get(), assessmentState });
   },
 
   addInsight: (insight) => {
@@ -267,6 +293,5 @@ export const useStore = create<StoreState>((set, get) => ({
       insights: [insight, ...get().assessmentState.insights].slice(0, 6),
     };
     set({ assessmentState });
-    persist({ ...get(), assessmentState });
   },
 }));

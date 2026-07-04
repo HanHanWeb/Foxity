@@ -19,10 +19,10 @@ export default function CreateTeamPage() {
   const [organizerName, setOrganizerName] = useState("");
   const [teamCode, setTeamCode] = useState<string | null>(null);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!teamName.trim() || !organizerName.trim()) return;
-    const code = createTeam(teamName.trim(), "默认", organizerName.trim());
+    const code = await createTeam(teamName.trim(), "默认", organizerName.trim());
     setTeamCode(code);
   };
 

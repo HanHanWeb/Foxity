@@ -280,17 +280,6 @@ function ChatPageInner() {
 
       <div className="border-t border-fox-gray-light bg-white p-4 md:px-8 md:py-5">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-            {quickReplies.map((reply) => (
-              <button
-                key={reply}
-                onClick={() => handleQuickReply(reply)}
-                className="flex-shrink-0 rounded-full border border-fox-gray-light bg-fox-gray-bg px-3 py-1 text-xs text-fox-navy transition-colors hover:bg-fox-cream"
-              >
-                {reply}
-              </button>
-            ))}
-          </div>
           <div className="flex gap-2">
             <Input
               value={input}

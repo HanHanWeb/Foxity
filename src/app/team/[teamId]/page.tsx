@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Users, Share2, Copy, Eye, EyeOff } from "lucide-react";
@@ -20,7 +20,12 @@ export default function TeamDashboardPage() {
   const router = useRouter();
   const teams = useStore((state) => state.teams);
   const profiles = useStore((state) => state.profiles);
+  const loadTeam = useStore((state) => state.loadTeam);
   const [showRealNames, setShowRealNames] = useState(true);
+
+  useEffect(() => {
+    loadTeam(params.teamId);
+  }, [params.teamId, loadTeam]);
 
   const team = teams.find((item) => item.team_id === params.teamId) ?? mockTeam;
   const teamProfiles = profiles.length > 0

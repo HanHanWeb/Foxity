@@ -11,6 +11,11 @@ const notoSansSc = Noto_Sans_SC({
 export const metadata: Metadata = {
   title: "狐狸学长",
   description: "AI 能动性驱动的团队能力测评产品",
+  icons: {
+    icon: "/fox.png",
+    shortcut: "/fox.png",
+    apple: "/fox.png",
+  },
 };
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Menu, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ChatMessage } from "@/components/ChatMessage";
 import { InsightCard } from "@/components/InsightCard";
 import { Progress } from "@/components/ui/progress";
-import { FoxAvatar } from "@/components/FoxAvatar";
 import { Badge } from "@/components/ui/badge";
 import { sendToAI } from "@/lib/ai";
 import type { ChatMessage as ChatMessageType, AbilityKey } from "@/types";
@@ -188,7 +188,7 @@ function ChatPageInner() {
             </SheetContent>
           </Sheet>
 
-          <FoxAvatar size={40} />
+          <img src="/fox.png" alt="狐狸学长" width={40} height={40} className="rounded-lg" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold text-fox-navy">狐狸学长</h1>

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FoxAvatar } from "@/components/FoxAvatar";
 import { useStore } from "@/store/useStore";
 import { mockTeam } from "@/mock/data";
 
@@ -32,7 +32,7 @@ export default function JoinTeamPage() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-md">
         <Card>
           <CardHeader className="items-center text-center">
-            <FoxAvatar size={64} />
+            <img src="/fox.png" alt="狐狸学长" width={64} height={64} className="rounded-2xl" />
             <CardTitle className="mt-3">欢迎加入团队！</CardTitle>
             <CardDescription>
               团队：{team.team_name} · {team.competition_type}

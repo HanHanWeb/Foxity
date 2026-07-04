@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { FoxAvatar } from "@/components/FoxAvatar";
 import { AbilityRadar } from "@/components/AbilityRadar";
 import { AbilityBarList } from "@/components/AbilityBarList";
 import { ScoreComparison } from "@/components/ScoreComparison";
@@ -64,7 +63,7 @@ export default function ProfilePage() {
           className="mb-8 flex flex-col items-center text-center md:flex-row md:items-end md:gap-6 md:text-left"
         >
           <div className="relative">
-            <FoxAvatar size={100} expression="smile" />
+            <img src="/fox.png" alt={data.user_name} width={100} height={100} className="rounded-2xl" />
             <Badge
               variant="default"
               className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs"

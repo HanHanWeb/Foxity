@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Users, Target, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FoxAvatar } from "@/components/FoxAvatar";
+import { HomeNavbar } from "@/components/Layout/HomeNavbar";
 
 const features = [
   {
@@ -61,10 +62,11 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen">
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 pb-20 pt-14 md:grid-cols-2 md:items-center md:pt-20">
+      <HomeNavbar />
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 pb-20 pt-28 md:grid-cols-2 md:items-center md:pt-32">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="mb-6 flex items-center gap-2">
-            <FoxAvatar size={48} breathing blinking />
+            <img src="/fox.png" alt="狐狸学长" width={48} height={48} className="rounded-xl" />
             <span className="text-lg font-bold text-fox-navy">狐狸学长</span>
           </div>
 
@@ -115,7 +117,7 @@ export default function HomePage() {
 
           <div className="relative">
             <div className="flex h-[340px] w-[340px] items-center justify-center rounded-full bg-fox-cream shadow-xl">
-              <FoxAvatar size={240} expression="smile" />
+              <img src="/fox.png" alt="狐狸学长" width={240} height={240} className="rounded-3xl" />
             </div>
 
             <motion.div

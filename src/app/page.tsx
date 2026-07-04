@@ -70,11 +70,17 @@ export default function HomePage() {
                 { label: "十维能力", icon: <Radar className="h-3.5 w-3.5" /> },
                 { label: "陪伴探索", icon: <Compass className="h-3.5 w-3.5" /> },
                 { label: "团队视角", icon: <Users className="h-3.5 w-3.5" /> },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2 rounded-full border border-[#dfe4ec] bg-white/60 px-4 py-2 text-sm font-semibold text-[#8a96aa] shadow-sm backdrop-blur">
+              ].map((item, idx) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.8 + idx * 0.15 }}
+                  className="flex items-center gap-2 rounded-full border border-[#dfe4ec] bg-white/60 px-4 py-2 text-sm font-semibold text-[#8a96aa] shadow-sm backdrop-blur"
+                >
                   {item.icon}
                   {item.label}
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>
@@ -85,11 +91,27 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative flex min-h-[520px] items-center justify-center md:flex"
           >
-            <div className="relative flex h-[360px] w-[360px] items-center justify-center rounded-full bg-white shadow-[0_30px_80px_rgba(242,170,114,0.18)] lg:h-[420px] lg:w-[420px]">
-              <div className="flex h-[220px] w-[220px] items-center justify-center rounded-full bg-[#fbf7ef] lg:h-[260px] lg:w-[260px]">
-                <img src="/fox.png" alt="Foxity" width={164} height={164} className="rounded-3xl lg:h-[190px] lg:w-[190px]" />
-              </div>
-            </div>
+            <motion.div
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="relative flex h-[360px] w-[360px] items-center justify-center rounded-full bg-white shadow-[0_30px_80px_rgba(242,170,114,0.18)] lg:h-[420px] lg:w-[420px]"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="flex h-[220px] w-[220px] items-center justify-center rounded-full bg-[#fbf7ef] lg:h-[260px] lg:w-[260px]"
+              >
+                <motion.img
+                  src="/fox.png"
+                  alt="Foxity"
+                  width={164}
+                  height={164}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="rounded-3xl lg:h-[190px] lg:w-[190px]"
+                />
+              </motion.div>
+            </motion.div>
 
             <motion.div
               animate={{ y: [0, -8, 0] }}

@@ -25,12 +25,12 @@ interface StoreState {
   hydrate: () => void;
   loadTeam: (teamId: string) => Promise<void>;
   createTeam: (name: string, type: string, organizer: string, emoji?: string) => Promise<string>;
-  joinTeam: (teamId: string, userName: string) => Promise<UserProfile>;
+  joinTeam: (teamId: string, userName: string, userId?: string) => Promise<UserProfile>;
   addMessage: (msg: ChatMessage) => void;
   markEvent: (event: string) => void;
   setProfile: (data: Partial<UserProfile>) => void;
   saveProfile: () => Promise<void>;
-  startConversation: (userName: string) => void;
+  startConversation: (userName: string, userId?: string, teamId?: string) => void;
   updateExpression: (expr: Expression) => void;
   updateDimensionStatus: (dim: HardSkillKey, status: DimensionStatus) => void;
   triggerKeyEvent: (type: "stress" | "conflict") => void;
@@ -138,10 +138,10 @@ export const useStore = create<StoreState>((set, get) => ({
     return teamId;
   },
 
-  joinTeam: async (teamId, userName) => {
+  joinTeam: async (teamId, userName, userId) => {
     const profile: UserProfile = {
       ...getInitialProfile(),
-      user_id: createId("user"),
+      user_id: userId || createId("user"),
       user_name: userName,
       team_id: teamId,
     };
@@ -230,10 +230,12 @@ export const useStore = create<StoreState>((set, get) => ({
     });
   },
 
-  startConversation: (userName) => {
+  startConversation: (userName, userId, teamId) => {
     const profile: UserProfile = {
       ...getInitialProfile(),
       user_name: userName,
+      ...(userId ? { user_id: userId } : {}),
+      ...(teamId ? { team_id: teamId } : {}),
     };
     const welcome: ChatMessage = {
       role: "fox",

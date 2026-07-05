@@ -66,10 +66,10 @@ export default function ProfilePage() {
     }
   };
 
-  // 从数据库加载用户画像
+  // 从数据库加载用户画像（按 team_id 隔离）
   useEffect(() => {
     if (!user?.user_id) return;
-    fetch(`/api/profiles/${user.user_id}`)
+    fetch(`/api/profiles/${user.user_id}?team_id=${params.teamId}`)
       .then((res) => res.ok ? res.json() : null)
       .then((result) => {
         if (result?.data) {
@@ -78,7 +78,7 @@ export default function ProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false));
-  }, [user?.user_id]);
+  }, [user?.user_id, params.teamId]);
 
   // 加载当前团队名称
   useEffect(() => {
@@ -330,7 +330,7 @@ export default function ProfilePage() {
                               whileHover={{ scale: 1.05 }}
                               className="cursor-default rounded-full px-3 py-1.5 text-sm font-medium"
                               style={{
-                                backgroundColor: item.confidence === "high" ? themeYellow : item.confidence === "medium" ? `${themeYellow}80` : `${themeYellow}40`,
+                                backgroundColor: item.confidence === "high" ? themeYellow : item.confidence === "medium" ? themeYellow : `${themeYellow}80`,
                                 color: item.confidence === "low" ? "#666" : "white",
                               }}
                               title={item.evidence}

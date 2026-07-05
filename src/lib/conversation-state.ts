@@ -256,11 +256,14 @@ function checkShouldWrap(state: ConversationState): boolean {
   // 连续 3 轮没获得任何有效新信息 → 再聊就是尬聊了
   if (state.consecutiveNoInfo >= 3) return true;
 
-  // 全部 5 维都有至少 1 条证据（覆盖即可，不要求 L3+）
-  const allCovered = HARD_SKILL_DIMENSIONS.every(
-    (dim) => state.dimensionCoverage[dim].evidenceCount >= 1
+  // 全部 5 维都有至少 1 条 L3+ 证据（真实经历/深度），且已进入交叉验证阶段
+  const allDeepCovered = HARD_SKILL_DIMENSIONS.every(
+    (dim) => {
+      const c = state.dimensionCoverage[dim];
+      return c.evidenceCount >= 1 && LEVEL_WEIGHT[c.highestLevel] >= LEVEL_WEIGHT["L3"];
+    }
   );
-  if (allCovered && state.round >= 10) return true;
+  if (allDeepCovered && state.round >= 11) return true;
 
   return false;
 }

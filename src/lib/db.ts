@@ -17,41 +17,7 @@ export function getDb(): Client {
   return _client;
 }
 
-// 期望的表结构定义（用于校验已存在的表是否匹配）
-const EXPECTED_COLUMNS: Record<string, string[]> = {
-  teams: ["team_id", "team_name", "team_emoji", "competition_type", "organizer_name", "owner_user_id", "created_at"],
-  profiles: ["user_id", "user_name", "team_id", "timestamp", "data"],
-  chat_history: ["id", "user_id", "team_id", "role", "content", "emotion", "created_at"],
-  users: ["user_id", "display_name", "password_hash", "email", "created_at"],
-  sessions: ["token", "user_id", "expires_at", "created_at"],
-  dimension_evidence: ["id", "user_id", "team_id", "dimension", "evidence_level", "quality_score", "summary", "quote", "chat_round", "created_at"],
-};
-
-// 校验已存在的表是否拥有期望的列；不匹配则 DROP 重建
-async function ensureTableSchema(db: Client, table: string, createSql: string) {
-  try {
-    const res = await db.execute(`PRAGMA table_info(${table})`);
-    const rows = res.rows as unknown as { name: string }[];
-    // 表不存在（rows 为空），交给 CREATE TABLE IF NOT EXISTS 处理
-    if (rows.length === 0) return;
-
-    const expected = EXPECTED_COLUMNS[table] || [];
-    const actual = rows.map((r) => r.name);
-    const mismatch = expected.some((col) => !actual.includes(col));
-
-    if (mismatch) {
-      console.warn(`[db] 表 ${table} 结构不匹配，期望列 [${expected.join(", ")}]，实际列 [${actual.join(", ")}]，正在重建...`);
-      await db.execute(`DROP TABLE IF EXISTS ${table}`);
-      await db.execute(createSql);
-      console.log(`[db] 表 ${table} 已重建`);
-    }
-  } catch (e: any) {
-    // 表不存在等错误，忽略，交给 CREATE TABLE IF NOT EXISTS 处理
-    if (!/no such table/i.test(e?.message || "")) {
-      console.warn(`[db] 校验 ${table} 结构时出错:`, e?.message);
-    }
-  }
-}
+// ===== 建表语句 =====
 
 const CREATE_TEAMS = `CREATE TABLE IF NOT EXISTS teams (
   team_id TEXT PRIMARY KEY,
@@ -63,13 +29,15 @@ const CREATE_TEAMS = `CREATE TABLE IF NOT EXISTS teams (
   created_at TEXT NOT NULL
 )`;
 
+// profiles 改为复合主键 (user_id, team_id)，同一用户可在不同团队拥有不同画像
 const CREATE_PROFILES = `CREATE TABLE IF NOT EXISTS profiles (
-  user_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   user_name TEXT NOT NULL,
   team_id TEXT NOT NULL,
   timestamp TEXT NOT NULL,
   data TEXT NOT NULL,
-  FOREIGN KEY (team_id) REFERENCES teams(team_id)
+  PRIMARY KEY (user_id, team_id),
+  FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 )`;
 
 const CREATE_CHAT_HISTORY = `CREATE TABLE IF NOT EXISTS chat_history (
@@ -80,7 +48,7 @@ const CREATE_CHAT_HISTORY = `CREATE TABLE IF NOT EXISTS chat_history (
   content TEXT NOT NULL,
   emotion TEXT,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+  FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 )`;
 
 const CREATE_USERS = `CREATE TABLE IF NOT EXISTS users (
@@ -96,7 +64,7 @@ const CREATE_SESSIONS = `CREATE TABLE IF NOT EXISTS sessions (
   user_id TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(user_id)
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 )`;
 
 const CREATE_DIMENSION_EVIDENCE = `CREATE TABLE IF NOT EXISTS dimension_evidence (
@@ -110,22 +78,26 @@ const CREATE_DIMENSION_EVIDENCE = `CREATE TABLE IF NOT EXISTS dimension_evidence
   quote TEXT,
   chat_round INTEGER NOT NULL,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+  FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 )`;
+
+// 安全地为已有表添加列（列已存在则静默忽略）
+async function addColumnIfMissing(db: Client, table: string, column: string, definition: string) {
+  try {
+    await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`[db] ${table}.${column} column added`);
+  } catch (e: any) {
+    if (!/duplicate column/i.test(e?.message || "")) {
+      // 列已存在或其他非致命错误，忽略
+    }
+  }
+}
 
 // 建表（幂等执行，应用启动时调用一次即可）
 export async function initDb() {
   const db = getDb();
 
-  // 先校验已存在的表结构是否匹配，不匹配则重建
-  await ensureTableSchema(db, "teams", CREATE_TEAMS);
-  await ensureTableSchema(db, "profiles", CREATE_PROFILES);
-  await ensureTableSchema(db, "chat_history", CREATE_CHAT_HISTORY);
-  await ensureTableSchema(db, "users", CREATE_USERS);
-  await ensureTableSchema(db, "sessions", CREATE_SESSIONS);
-  await ensureTableSchema(db, "dimension_evidence", CREATE_DIMENSION_EVIDENCE);
-
-  // 建表（IF NOT EXISTS 保证幂等）
+  // 1. 先建表（IF NOT EXISTS 保证幂等，不会破坏已有表）
   await db.executeMultiple(`
     ${CREATE_TEAMS};
     ${CREATE_PROFILES};
@@ -135,6 +107,7 @@ export async function initDb() {
     ${CREATE_DIMENSION_EVIDENCE};
 
     CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team_id);
+    CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_user ON chat_history(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_team ON chat_history(team_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
@@ -142,34 +115,35 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_evidence_dimension ON dimension_evidence(dimension);
   `);
 
-  // 迁移：为已存在的 users 表补齐 email 列（CREATE TABLE IF NOT EXISTS 不会改已存在表结构）
-  try {
-    await db.execute(`ALTER TABLE users ADD COLUMN email TEXT`);
-    console.log("[db] users.email column added");
-  } catch (e: any) {
-    // 列已存在时会报错，忽略即可
-    if (!/duplicate column/i.test(e?.message || "")) {
-      console.warn("[db] users.email migration skipped:", e?.message);
-    }
-  }
+  // 2. 增量迁移：为旧表补齐可能缺失的列（幂等，列已存在会静默跳过）
+  await addColumnIfMissing(db, "users", "email", "TEXT");
+  await addColumnIfMissing(db, "teams", "owner_user_id", "TEXT");
+  // SQLite 不允许 ALTER TABLE ADD COLUMN 带 NOT NULL DEFAULT 而无默认值，这里用空字符串默认值
+  await addColumnIfMissing(db, "teams", "team_emoji", "TEXT NOT NULL DEFAULT ''");
 
-  // 迁移：为已存在的 teams 表补齐 owner_user_id 列
+  // 3. profiles 表迁移：如果旧表是 user_id 单主键，重建为复合主键
+  // 安全检查：只有当 user_id 是主键时才需要迁移
   try {
-    await db.execute(`ALTER TABLE teams ADD COLUMN owner_user_id TEXT`);
-    console.log("[db] teams.owner_user_id column added");
-  } catch (e: any) {
-    if (!/duplicate column/i.test(e?.message || "")) {
-      console.warn("[db] teams.owner_user_id migration skipped:", e?.message);
+    const res = await db.execute(`PRAGMA table_info(profiles)`);
+    const rows = res.rows as unknown as { name: string; pk: number }[];
+    if (rows.length > 0) {
+      const pkColumns = rows.filter((r) => r.pk > 0).map((r) => r.name);
+      // 如果旧表主键只有 user_id，说明是旧结构，需要迁移
+      if (pkColumns.length === 1 && pkColumns[0] === "user_id") {
+        console.warn("[db] profiles 表为旧结构（user_id 单主键），开始迁移为复合主键...");
+        await db.executeMultiple(`
+          ALTER TABLE profiles RENAME TO profiles_old;
+          ${CREATE_PROFILES};
+          INSERT INTO profiles (user_id, user_name, team_id, timestamp, data)
+            SELECT user_id, user_name, team_id, timestamp, data FROM profiles_old;
+          DROP TABLE profiles_old;
+        `);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team_id);`);
+        await db.execute(`CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);`);
+        console.log("[db] profiles 表迁移完成");
+      }
     }
-  }
-
-  // 迁移：为已存在的 teams 表补齐 team_emoji 列
-  try {
-    await db.execute(`ALTER TABLE teams ADD COLUMN team_emoji TEXT NOT NULL DEFAULT ''`);
-    console.log("[db] teams.team_emoji column added");
   } catch (e: any) {
-    if (!/duplicate column/i.test(e?.message || "")) {
-      console.warn("[db] teams.team_emoji migration skipped:", e?.message);
-    }
+    console.warn("[db] profiles 表迁移检查失败（可忽略）:", e?.message);
   }
 }

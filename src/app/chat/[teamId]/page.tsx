@@ -14,12 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { sendToAI } from "@/lib/ai";
 import type { ChatMessage as ChatMessageType } from "@/types";
 import { useStore } from "@/store/useStore";
+import { useAuth } from "@/lib/auth";
 
 function ChatPageInner() {
   const params = useParams<{ teamId: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth(false);
 
   const messages = useStore((state) => state.messages);
   const addMessage = useStore((state) => state.addMessage);
@@ -34,14 +36,14 @@ function ChatPageInner() {
   const [progress, setProgress] = useState(0);
   const [assessmentDone, setAssessmentDone] = useState(false);
   const [highlights, setHighlights] = useState<string[]>([]);
-  const userName = searchParams.get("user") ?? "你";
+  const userName = user?.name || searchParams.get("user") || "你";
 
   useEffect(() => {
-    if (messages.length === 0) {
-      startConversation(userName);
+    if (messages.length === 0 && user) {
+      startConversation(userName, user.user_id, params.teamId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -96,10 +98,15 @@ function ChatPageInner() {
         }, 100);
         setAssessmentDone(true);
         setProgress(100);
+
+        // 延迟跳转到画像页面，让用户看到 Foxity 的最终回复
+        setTimeout(() => {
+          router.push(`/profile/${params.teamId}`);
+        }, 3000);
       } else {
         // 基于对话轮数估算进度
         const userTurns = latestMessages.filter((m) => m.role === "user").length;
-        const estimatedProgress = Math.min(90, Math.round((userTurns / 12) * 100));
+        const estimatedProgress = Math.min(95, Math.round((userTurns / 12) * 100));
         setProgress((prev) => Math.max(prev, estimatedProgress));
       }
     } finally {
@@ -240,8 +247,9 @@ function ChatPageInner() {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex justify-center pt-4"
+                className="flex flex-col items-center gap-3 pt-4"
               >
+                <p className="text-sm text-fox-gray">画像已生成，正在为你跳转...</p>
                 <Button
                   variant="secondary"
                   onClick={() => router.push(`/profile/${params.teamId}`)}

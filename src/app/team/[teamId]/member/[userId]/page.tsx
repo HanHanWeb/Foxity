@@ -39,7 +39,7 @@ export default function MemberSummaryPage() {
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const res = await fetch(`/api/chat-history/${params.userId}`);
+        const res = await fetch(`/api/chat-history/${params.userId}?team_id=${params.teamId}`);
         if (res.ok) {
           const data = await res.json();
           setChatHistory(
@@ -56,7 +56,7 @@ export default function MemberSummaryPage() {
       }
     };
     loadChatHistory();
-  }, [params.userId]);
+  }, [params.userId, params.teamId]);
 
   useEffect(() => {
     const generateSummary = async () => {

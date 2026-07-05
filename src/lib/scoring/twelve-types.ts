@@ -2,7 +2,7 @@
 
 import type { ScoreData, TypeResult } from "./types";
 
-const TYPE_MATRIX: Record<string, { name: string; icon: string }> = {
+export const TYPE_MATRIX: Record<string, { name: string; icon: string }> = {
   "analytical-dominant": { name: "战略操盘手", icon: "🎯" },
   "analytical-collaborative": { name: "洞察协调者", icon: "🤝" },
   "analytical-independent": { name: "深度研究员", icon: "🔍" },

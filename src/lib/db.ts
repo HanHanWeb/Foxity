@@ -81,6 +81,18 @@ const CREATE_DIMENSION_EVIDENCE = `CREATE TABLE IF NOT EXISTS dimension_evidence
   FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
 )`;
 
+// team_members 表：成员关系 + 角色 + 职位
+// 之前成员关系挂在 profiles 表，职责不清。单独拆一张轻量表管"谁在哪个队、什么角色、什么职位"
+const CREATE_TEAM_MEMBERS = `CREATE TABLE IF NOT EXISTS team_members (
+  team_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member',
+  position TEXT NOT NULL DEFAULT '',
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (team_id, user_id),
+  FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
+)`;
+
 // 安全地为已有表添加列（列已存在则静默忽略）
 async function addColumnIfMissing(db: Client, table: string, column: string, definition: string) {
   try {
@@ -105,6 +117,7 @@ export async function initDb() {
     ${CREATE_USERS};
     ${CREATE_SESSIONS};
     ${CREATE_DIMENSION_EVIDENCE};
+    ${CREATE_TEAM_MEMBERS};
 
     CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team_id);
     CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
@@ -113,6 +126,8 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_evidence_user ON dimension_evidence(user_id);
     CREATE INDEX IF NOT EXISTS idx_evidence_dimension ON dimension_evidence(dimension);
+    CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
+    CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id);
   `);
 
   // 2. 增量迁移：为旧表补齐可能缺失的列（幂等，列已存在会静默跳过）
@@ -145,5 +160,28 @@ export async function initDb() {
     }
   } catch (e: any) {
     console.warn("[db] profiles 表迁移检查失败（可忽略）:", e?.message);
+  }
+
+  // 4. team_members 数据迁移：把已有 profiles 记录同步到 team_members 表
+  try {
+    const existingMembers = await db.execute(
+      `SELECT COUNT(*) AS cnt FROM team_members`
+    );
+    const memberCount = (existingMembers.rows[0] as any)?.cnt ?? 0;
+    if (Number(memberCount) === 0) {
+      // team_members 为空，从 profiles 表回填
+      await db.execute(
+        `INSERT OR IGNORE INTO team_members (team_id, user_id, role, position, joined_at)
+         SELECT p.team_id, p.user_id,
+                CASE WHEN t.owner_user_id = p.user_id THEN 'leader' ELSE 'member' END,
+                COALESCE(json_extract(p.data, '$.core_positioning'), ''),
+                p.timestamp
+         FROM profiles p
+         LEFT JOIN teams t ON p.team_id = t.team_id`
+      );
+      console.log("[db] team_members 数据迁移完成");
+    }
+  } catch (e: any) {
+    console.warn("[db] team_members 数据迁移失败（可忽略）:", e?.message);
   }
 }

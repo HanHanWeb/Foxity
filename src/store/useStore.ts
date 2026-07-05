@@ -37,6 +37,11 @@ interface StoreState {
   addInsight: (insight: { icon: string; text: string }) => void;
   applyAssessment: (data: V2AssessmentData) => void;
   deleteTeam: (teamId: string) => Promise<"deleted" | "left" | null>;
+  updateMemberPosition: (teamId: string, userId: string, position: string) => Promise<boolean>;
+  removeMember: (teamId: string, userId: string) => Promise<boolean>;
+  // 当前用户在当前团队的角色
+  currentUserRole: "leader" | "member" | null;
+  currentUserId: string | null;
 }
 
 function getInitialProfile(): UserProfile {
@@ -72,6 +77,8 @@ export const useStore = create<StoreState>((set, get) => ({
   currentTeam: mockTeam,
   teams: [mockTeam],
   profiles: mockProfiles,
+  currentUserRole: null,
+  currentUserId: null,
   currentProfile: null,
   mockProfile: mockProfiles[0],
   messages: [],
@@ -89,13 +96,16 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const res = await fetch(`/api/teams/${teamId}`);
       if (!res.ok) return;
-      const team: Team = await res.json();
+      const data = await res.json();
+      const team: Team = data;
       set((state) => ({
         currentTeam: team,
         teams: state.teams.some((t) => t.team_id === team.team_id)
           ? state.teams.map((t) => (t.team_id === team.team_id ? team : t))
           : [...state.teams, team],
         profiles: team.members.length > 0 ? team.members : mockProfiles,
+        currentUserRole: (data.currentUserRole as "leader" | "member") || null,
+        currentUserId: data.currentUserId || null,
       }));
     } catch (e) {
       console.error("loadTeam error:", e);
@@ -157,6 +167,15 @@ export const useStore = create<StoreState>((set, get) => ({
           data: profile,
         }),
       });
+      // 同步写入 team_members 表
+      await fetch(`/api/teams/${teamId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          user_name: profile.user_name,
+        }),
+      }).catch((e) => console.error("joinTeam team_members insert error:", e));
     } catch (e) {
       console.error("joinTeam db error:", e);
     }
@@ -345,6 +364,45 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch (e) {
       console.error("deleteTeam error:", e);
       return null;
+    }
+  },
+
+  updateMemberPosition: async (teamId, userId, position) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position }),
+      });
+      if (!res.ok) return false;
+      // 本地更新 profiles 里的 position
+      set((state) => ({
+        profiles: state.profiles.map((p) =>
+          p.user_id === userId && p.team_id === teamId
+            ? { ...p, core_positioning: position }
+            : p
+        ),
+      }));
+      return true;
+    } catch (e) {
+      console.error("updateMemberPosition error:", e);
+      return false;
+    }
+  },
+
+  removeMember: async (teamId, userId) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${userId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) return false;
+      set((state) => ({
+        profiles: state.profiles.filter((p) => !(p.user_id === userId && p.team_id === teamId)),
+      }));
+      return true;
+    } catch (e) {
+      console.error("removeMember error:", e);
+      return false;
     }
   },
 }));

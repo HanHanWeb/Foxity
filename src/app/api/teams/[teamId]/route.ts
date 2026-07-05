@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getUserId } from "@/lib/session";
 
+function safeParseJSON(val: unknown): any {
+  if (!val) return null;
+  try { return JSON.parse(val as string); } catch { return null; }
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ teamId: string }> }
@@ -42,24 +47,47 @@ export async function GET(
     };
 
     const profilesResult = await db.execute({
-      sql: `SELECT user_id, user_name, team_id, timestamp, data
+      sql: `SELECT user_id, user_name, team_id, timestamp, data,
+                   verified_scores, self_scores, evidence_levels, twelve_type, credibility
             FROM profiles WHERE team_id = ?`,
       args: [teamId],
     });
 
     const members = profilesResult.rows.map((row) => {
-      let parsedData: any = null;
-      try {
-        parsedData = row.data ? JSON.parse(row.data as string) : null;
-      } catch (e) {
-        console.error("Failed to parse profile data for user", row.user_id, e);
+      const parsedData = safeParseJSON(row.data);
+      const verifiedScores = safeParseJSON(row.verified_scores);
+      const selfScores = safeParseJSON(row.self_scores);
+      const twelveType = safeParseJSON(row.twelve_type);
+      const credibility = safeParseJSON(row.credibility);
+
+      // 计算综合验证分（6个维度平均值）
+      let overallVerified = 0;
+      if (verifiedScores && typeof verifiedScores === "object") {
+        const vals = Object.values(verifiedScores).filter(
+          (v): v is number => typeof v === "number"
+        );
+        if (vals.length > 0) {
+          overallVerified = Math.round(
+            vals.reduce((a, b) => a + b, 0) / vals.length
+          );
+        }
       }
+
       return {
         user_id: row.user_id,
         user_name: row.user_name,
         team_id: row.team_id,
         timestamp: row.timestamp,
-        data: parsedData,
+        data: parsedData,       // 旧版兼容
+        v3_summary: {
+          overall_verified: overallVerified,
+          twelve_type: twelveType,
+          credibility: credibility
+            ? { level: credibility.level, score: credibility.score }
+            : null,
+          verified_scores: verifiedScores,
+          self_scores: selfScores,
+        },
       };
     });
 
@@ -102,12 +130,14 @@ export async function DELETE(
       // 队长删除团队：删除所有关联数据
       await db.execute({ sql: `DELETE FROM chat_history WHERE team_id = ?`, args: [teamId] });
       await db.execute({ sql: `DELETE FROM profiles WHERE team_id = ?`, args: [teamId] });
+      await db.execute({ sql: `DELETE FROM dimension_evidence WHERE team_id = ?`, args: [teamId] });
       await db.execute({ sql: `DELETE FROM teams WHERE team_id = ?`, args: [teamId] });
       return NextResponse.json({ action: "deleted" });
     } else {
       // 成员退出团队：删除自己的 profile 和聊天记录
       await db.execute({ sql: `DELETE FROM chat_history WHERE user_id = ? AND team_id = ?`, args: [userId, teamId] });
       await db.execute({ sql: `DELETE FROM profiles WHERE user_id = ? AND team_id = ?`, args: [userId, teamId] });
+      await db.execute({ sql: `DELETE FROM dimension_evidence WHERE user_id = ? AND team_id = ?`, args: [userId, teamId] });
       return NextResponse.json({ action: "left" });
     }
   } catch (error: any) {

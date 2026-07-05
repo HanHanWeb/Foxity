@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { ScoringEngine, calculateCredibility, determineTwelveType } from "@/lib/scoring";
+import { ScoringEngine, calculateCredibility, determineTwelveType, fuseSoftSkillScores } from "@/lib/scoring";
 import type { RoundData, Evidence, SelfAssessmentSignal, BehaviorSignal } from "@/lib/scoring";
+import { getDb, saveEvidencesBatch, updateProfileScores, getUserEvidences } from "@/lib/db";
+import { getUserId } from "@/lib/session";
 
 const BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://aiping.cn/api/v1";
 const API_KEY = process.env.DEEPSEEK_API_KEY || "QC-7a7871deae33459254726df78d491f40-4db6a87ac8a4314081852120417944b7";
@@ -422,35 +424,151 @@ export async function POST(req: Request) {
     const { reply, roundData } = parseRoundData(content);
     const { reply: finalReply, assessment } = parseAssessment(reply);
 
-    // ===== 后端评分引擎计算（V3核心升级）=====
-    // 如果有历史消息，构建评分引擎实时计算
+    // ===== V3 核心：证据保存 + 评分计算 =====
+    const userId = await getUserId();
+    const db = getDb();
+
     let scoringResult: any = null;
     let credibility: any = null;
     let twelveType: any = null;
+    let scoreData: any = null;
 
-    if (roundData && roundData.new_evidence) {
-      // 注意：完整的评分需要累积所有轮次的证据
-      // 这里单轮只返回本轮打标数据，完整画像在最后一轮由后端汇总计算
-      // 完整实现需要在服务端维护会话状态（或从数据库读取历史证据）
+    // 每轮对话：保存证据到数据库
+    if (roundData && userId && team_id) {
+      try {
+        // 保存硬技能 + 软实力证据
+        if (roundData.new_evidence && roundData.new_evidence.length > 0) {
+          const evidencesToSave = roundData.new_evidence.map((e: Evidence) => ({
+            user_id: userId,
+            team_id: team_id,
+            dimension: e.dimension,
+            evidence_level: e.level,
+            quality_score: e.quality_score,
+            summary: e.summary,
+            quote: e.quote,
+            chat_round: roundData.round,
+          }));
+          await saveEvidencesBatch(db, evidencesToSave);
+        }
+      } catch (e) {
+        console.error("[chat] save evidence error:", e);
+      }
+
+      // 本轮摘要
       scoringResult = {
-        round_evidence_count: roundData.new_evidence.length,
-        round_self_signals: roundData.self_assessment_signals?.length || 0,
-        round_behavior_signals: roundData.behavior_signals?.length || 0,
+        round: roundData.round,
+        phase: roundData.phase,
+        new_evidence_count: roundData.new_evidence?.length || 0,
+        self_signals_count: roundData.self_assessment_signals?.length || 0,
+        behavior_signals_count: roundData.behavior_signals?.length || 0,
       };
     }
 
-    // 如果是最终轮（有assessment），计算完整评分
-    if (assessment && roundData) {
-      // 这里简化处理：完整评分引擎调用需要从数据库读取所有轮次的证据
-      // 实际部署时，应在保存完所有轮次后统一计算
+    // 最终轮：从数据库聚合所有证据，计算完整 V3 评分
+    if (assessment && userId && team_id) {
       try {
-        // 从历史消息中提取所有轮次的证据（简化版）
+        // 1. 从数据库读取所有历史证据
+        const allEvidences = await getUserEvidences(db, userId, team_id);
+
+        // 2. 构建评分引擎，注入所有证据
         const engine = new ScoringEngine();
-        // 注：完整实现需要遍历所有历史消息提取证据
-        // 此处先返回AI给出的定性结果，评分由后续/保存时统一计算
-        scoringResult = { note: "完整评分需在服务端聚合所有轮次证据后计算" };
+        const evidencesByRound: Record<number, { evidences: Evidence[]; selfSignals: SelfAssessmentSignal[] }> = {};
+
+        for (const row of allEvidences as any[]) {
+          const round = row.chat_round as number;
+          if (!evidencesByRound[round]) {
+            evidencesByRound[round] = { evidences: [], selfSignals: [] };
+          }
+          evidencesByRound[round].evidences.push({
+            dimension: row.dimension as any,
+            level: row.evidence_level as any,
+            quality_score: row.quality_score as number,
+            summary: row.summary as string,
+            quote: row.quote as string,
+            chat_round: round,
+          });
+        }
+
+        // 把本轮的自述信号也加进去（从 roundData 中取）
+        if (roundData && roundData.self_assessment_signals) {
+          const round = roundData.round;
+          if (!evidencesByRound[round]) {
+            evidencesByRound[round] = { evidences: [], selfSignals: [] };
+          }
+          evidencesByRound[round].selfSignals.push(...roundData.self_assessment_signals);
+        }
+
+        // 按轮次注入引擎
+        for (const [roundStr, data] of Object.entries(evidencesByRound)) {
+          engine.addRoundData(data.evidences, data.selfSignals, parseInt(roundStr));
+        }
+
+        // 3. 计算评分
+        scoreData = engine.getScoreData();
+
+        // 4. 计算可信度
+        credibility = calculateCredibility(scoreData);
+
+        // 5. 判定 12 型标签
+        twelveType = determineTwelveType(scoreData);
+
+        // 6. 软实力行为信号融合（如果有本轮行为信号）
+        if (roundData && roundData.behavior_signals && scoreData.soft_skills) {
+          try {
+            const softSkillBehavior = {} as Record<string, number>;
+            // 从行为信号推导软实力初步分
+            const behaviorGroups: Record<string, number[]> = {};
+            for (const sig of roundData.behavior_signals) {
+              if (!behaviorGroups[sig.dimension]) {
+                behaviorGroups[sig.dimension] = [];
+              }
+              behaviorGroups[sig.dimension].push(sig.intensity);
+            }
+            for (const [dim, intensities] of Object.entries(behaviorGroups)) {
+              softSkillBehavior[dim] = Math.round(
+                intensities.reduce((a, b) => a + b, 0) / intensities.length * 10
+              ) / 10;
+            }
+            // 融合：内容证据70% + 行为信号30%
+            scoreData = fuseSoftSkillScores(scoreData, softSkillBehavior, 0.3);
+          } catch (e) {
+            console.error("[chat] soft skill fusion error:", e);
+          }
+        }
+
+        // 7. 持久化到 profiles 表
+        const verifiedScores: Record<string, any> = {};
+        const selfScores: Record<string, any> = {};
+        const evidenceLevels: Record<string, string> = {};
+
+        for (const [dim, score] of Object.entries(scoreData.hard_skills || {})) {
+          const s = score as any;
+          verifiedScores[dim] = s.verified_score;
+          selfScores[dim] = s.self_score;
+          evidenceLevels[dim] = s.evidence_level;
+        }
+        for (const [dim, score] of Object.entries(scoreData.soft_skills || {})) {
+          const s = score as any;
+          verifiedScores[dim] = s.verified_score;
+          selfScores[dim] = s.self_score;
+          evidenceLevels[dim] = s.evidence_level;
+        }
+
+        await updateProfileScores(db, userId, team_id, {
+          verified_scores: JSON.stringify(verifiedScores),
+          self_scores: JSON.stringify(selfScores),
+          evidence_levels: JSON.stringify(evidenceLevels),
+          twelve_type: JSON.stringify(twelveType),
+          credibility: JSON.stringify(credibility),
+        });
+
+        scoringResult = {
+          ...scoreData,
+          note: "V3 完整评分已计算并保存",
+        };
       } catch (e) {
-        console.error("[chat] scoring engine error:", e);
+        console.error("[chat] final scoring error:", e);
+        scoringResult = { error: "评分计算失败", detail: (e as any)?.message };
       }
     }
 

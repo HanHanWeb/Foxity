@@ -262,6 +262,18 @@ export default function TeamDashboardPage() {
     return analyzeTeam(displayProfiles);
   }, [displayProfiles]);
 
+  // 模块一：12型角色分布饼图（放在 early return 之前以满足 Rules of Hooks）
+  const twelveTypeData = useMemo(() => {
+    if (!teamAnalysis) return [];
+    return Object.entries(teamAnalysis.twelveTypeDistribution).map(
+      ([key, val]) => ({
+        name: `${val.icon} ${val.name}`,
+        value: val.count,
+        key,
+      })
+    );
+  }, [teamAnalysis]);
+
   const completedCount = displayProfiles.filter((p) =>
     isAssessmentCompleted(p)
   ).length;
@@ -548,18 +560,6 @@ export default function TeamDashboardPage() {
   };
 
   // ===== Tab 2：分布分析 =====
-
-  // 模块一：12型角色分布饼图
-  const twelveTypeData = useMemo(() => {
-    if (!teamAnalysis) return [];
-    return Object.entries(teamAnalysis.twelveTypeDistribution).map(
-      ([key, val]) => ({
-        name: `${val.icon} ${val.name}`,
-        value: val.count,
-        key,
-      })
-    );
-  }, [teamAnalysis]);
 
   const renderTwelveTypePie = () => {
     if (twelveTypeData.length === 0) {

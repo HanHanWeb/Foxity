@@ -34,9 +34,8 @@ const priorityStyle: Record<string, { bg: string; dot: string; text: string; lab
 export default function ProfilePage() {
   const params = useParams<{ teamId: string }>();
   const router = useRouter();
-  const { user } = useAuth(false);
+  const { user, loading: authLoading } = useAuth(false);
   const currentProfile = useStore((state) => state.currentProfile);
-  const mockProfile = useStore((state) => state.mockProfile);
   const currentTeam = useStore((state) => state.currentTeam);
   const [teamName, setTeamName] = useState<string>("团队测评");
   const [teamEmoji, setTeamEmoji] = useState<string>("");
@@ -57,7 +56,7 @@ export default function ProfilePage() {
       sectionEls.forEach((el) => sections.push(el));
 
       await exportProfileToPDF(sections, {
-        userName: data.user_name,
+        userName: data?.user_name || "用户",
         teamName,
       });
     } catch (e) {
@@ -97,33 +96,46 @@ export default function ProfilePage() {
     }
   }, [params.teamId, currentTeam]);
 
-  // 优先用内存中的 currentProfile（刚测评完），否则用数据库加载的，最后 fallback mock
-  // 姓名优先用登录用户的真实姓名
-  const rawData = currentProfile ?? dbProfile ?? mockProfile;
-  const data = { ...rawData, user_name: user?.name || rawData.user_name };
+  // 优先用内存中的 currentProfile（刚测评完），否则用数据库加载的
+  // 严禁使用 mock 虚假数据
+  const rawData = currentProfile ?? dbProfile;
+  const data = rawData ? { ...rawData, user_name: user?.name || rawData.user_name } : null;
 
-  const radarData = (Object.keys(data.abilities) as HardSkillKey[]).map((key) => ({
-    ability: key,
-    label: hardSkillLabels[key],
-    score: data.abilities[key].score,
-    verified: data.abilities[key].verification_status,
-  }));
+  const radarData = data
+    ? (Object.keys(data.abilities) as HardSkillKey[]).map((key) => ({
+        ability: key,
+        label: hardSkillLabels[key],
+        score: data.abilities[key].score,
+        verified: data.abilities[key].verification_status,
+      }))
+    : [];
 
-  // V2 软实力数据 - 去掉性格特质和做事风格
-  const softSkillData = data.v2_assessment?.soft_skills || {};
-  const hiddenSoftSkills: SoftSkillKey[] = ["personality", "work_style"];
-  const softSkillEntries = Object.entries(softSkillData).filter(
-    ([key]) => !hiddenSoftSkills.includes(key as SoftSkillKey)
-  );
+  // 软实力数据：V2 soft_skills 优先，V3 soft_skills 兜底，显示全部 5 个维度
+  const v2SoftSkills = data?.v2_assessment?.soft_skills || {};
+  const v3SoftSkills = (data as any)?.v3_soft_skills || {};
+  const allSoftSkillKeys: SoftSkillKey[] = ["communication", "leadership", "learning", "personality", "work_style"];
+  const softSkillEntries = allSoftSkillKeys
+    .map((key) => {
+      const v2Val = (v2SoftSkills as any)[key];
+      const v3Val = v3SoftSkills[key];
+      if (v2Val && typeof v2Val.score === "number") {
+        return [key, v2Val] as [string, any];
+      }
+      if (v3Val && typeof v3Val.score === "number" && v3Val.score > 0) {
+        return [key, { score: v3Val.score, label: softSkillMeta.find((m) => m.key === key)?.name || key, insights: [], evidence: [] }] as [string, any];
+      }
+      return null;
+    })
+    .filter(Boolean) as [string, any][];
 
   // 成长建议按优先级排序（高→中→低）
-  const sortedSuggestions = [...data.growth_suggestions].sort((a, b) => {
+  const sortedSuggestions = [...(data?.growth_suggestions || [])].sort((a, b) => {
     const order = { high: 0, medium: 1, low: 2 };
     return order[a.priority] - order[b.priority];
   });
 
   // 关键能力标签按类别分组
-  const keywordTags = data.keyword_tags || [];
+  const keywordTags = data?.keyword_tags || [];
   const tagsByCategory = keywordTags.reduce<Record<string, typeof keywordTags>>((acc, tag) => {
     const cat = tag.category || "其他";
     if (!acc[cat]) acc[cat] = [];
@@ -134,8 +146,10 @@ export default function ProfilePage() {
   // 主题色黄
   const themeYellow = "#f2aa72";
 
-  // 没有内存数据且正在从数据库加载时，显示 loading
-  const showLoading = !currentProfile && loadingProfile;
+  // 没有数据时显示 loading（等待 auth + 内存 + 数据库加载）
+  const showLoading = !data && (authLoading || loadingProfile);
+  // 数据加载完成但没有画像数据
+  const noData = !data && !authLoading && !loadingProfile;
 
   return (
     <main className="min-h-screen bg-fox-cream/30 pb-12">
@@ -150,7 +164,7 @@ export default function ProfilePage() {
               <Share2 className="mr-2 h-4 w-4" />
               分享
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting || !data}>
               {exporting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -174,7 +188,20 @@ export default function ProfilePage() {
             <p className="text-sm text-fox-gray">加载画像数据...</p>
           </div>
         </div>
-      ) : (
+      ) : noData ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-4 px-6 text-center">
+            <img src="/fox.png" alt="Foxity" width={80} height={80} className="rounded-2xl opacity-60" />
+            <div>
+              <p className="text-lg font-semibold text-fox-navy">还没有画像数据</p>
+              <p className="mt-2 text-sm text-fox-gray">完成一次测评对话后，你的能力画像会显示在这里。</p>
+            </div>
+            <Button onClick={() => router.push(`/chat/${params.teamId}`)} className="mt-2">
+              开始测评
+            </Button>
+          </div>
+        </div>
+      ) : data && (
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -194,7 +221,7 @@ export default function ProfilePage() {
           <div className="mt-4 md:mt-0">
             <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{data.user_name}</h1>
             <p className="mt-1 text-sm text-fox-gray">{teamEmoji && <span className="mr-1">{teamEmoji}</span>}{teamName}</p>
-            <p className="mt-2 max-w-md text-sm text-fox-navy/80">{data.overview_summary}</p>
+            <p className="mt-2 max-w-2xl text-sm text-fox-navy/80">{data.overview_summary}</p>
           </div>
         </motion.div>
 
@@ -354,7 +381,7 @@ export default function ProfilePage() {
               </Card>
             )}
 
-            {/* V2 软实力分数（去掉性格特质和做事风格） */}
+            {/* 软实力维度分数 */}
             {softSkillEntries.length > 0 && (
               <Card>
                 <CardHeader>
@@ -393,6 +420,15 @@ export default function ProfilePage() {
                       </motion.div>
                     );
                   })}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 软实力数据为空时提示 */}
+            {!data.soft_skill_narrative && softSkillEntries.length === 0 && (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-sm text-fox-gray">软实力分析将在对话中逐步生成，继续聊聊可以解锁更多洞察。</p>
                 </CardContent>
               </Card>
             )}
@@ -441,6 +477,7 @@ export default function ProfilePage() {
       )}
 
       {/* 隐藏的导出区域：包含所有 tab 内容 */}
+      {data && (
       <div id="export-container" style={{ position: "absolute", left: "-9999px", top: "0", width: "800px", background: "#ffffff", padding: "24px" }}>
         {/* 概览 */}
         <div data-export-section>
@@ -581,6 +618,7 @@ export default function ProfilePage() {
           })}
         </div>
       </div>
+      )}
     </main>
   );
 }

@@ -42,7 +42,7 @@ export default function HomePage() {
               <span className="text-[#f2aa72]">比你想象的更特别</span>
             </h1>
             <p className="mt-8 text-lg font-medium text-[#9ca7b7] md:text-xl">
-              和 Foxity 聊聊天，慢慢看清你在团队里的样子。
+              携手 Foxity 共建团队，挖掘团队伙伴的专属闪光点。
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">

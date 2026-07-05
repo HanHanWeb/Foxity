@@ -7,8 +7,6 @@ import type {
   HardSkillDimension,
   SoftSkillDimension,
   SelfAssessmentSignal,
-  HARD_SKILL_DIMENSIONS,
-  SOFT_SKILL_DIMENSIONS,
 } from './types';
 import { ALL_DIMENSIONS, HARD_SKILL_DIMENSIONS, SOFT_SKILL_DIMENSIONS } from './types';
 

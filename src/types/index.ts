@@ -115,6 +115,26 @@ export interface UserProfile {
   highlights?: string[];
   leader_summary?: LeaderSummary;
   v2_assessment?: V2AssessmentData;               // V2 原始画像数据
+  // V3 评分数据
+  v3_score_data?: {
+    verified_scores: Record<string, number>;
+    self_scores: Record<string, number>;
+    evidence_levels: Record<string, string>;
+  };
+  v3_credibility?: {
+    overall: number | null;
+    overall_level: string;
+    dimensions: Record<string, { credibility: number | null; level: string; verified_score: number; self_score: number }>;
+  };
+  v3_type?: {
+    primary_type: string;
+    primary_icon: string;
+    skill_orientation: string;
+    behavior_pattern: string;
+    secondary_types: string[];
+    confidence: number;
+  };
+  v3_soft_skills?: Record<string, { score: number; evidence_count: number }>;
 }
 
 export interface BehaviorPatterns {
@@ -200,6 +220,17 @@ export interface AIResponse {
   profile_data?: Partial<UserProfile>;  // 解析后的画像
   assessment_data?: V2AssessmentData;   // V2 原始画像
   highlights?: string[];              // 实时亮点
+  // V3 评分体系
+  round_data?: {
+    round?: number;
+    phase?: string;
+    new_evidence?: any[];
+    self_assessment_signals?: any[];
+    behavior_signals?: any[];
+    has_new_info?: boolean;
+    dimensions_touched_this_round?: string[];
+  };
+  dimensions_covered?: number;
 }
 
 export interface DimensionMeta {

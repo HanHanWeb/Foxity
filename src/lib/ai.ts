@@ -34,6 +34,8 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
       is_final: data.is_final || false,
       assessment_data: data.assessment_data || undefined,
       highlights: data.highlights || undefined,
+      round_data: data.round_data || undefined,
+      dimensions_covered: data.dimensions_covered || 0,
     };
   } catch (error) {
     console.error("sendToAI error:", error);

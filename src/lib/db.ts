@@ -24,6 +24,7 @@ const EXPECTED_COLUMNS: Record<string, string[]> = {
   chat_history: ["id", "user_id", "team_id", "role", "content", "emotion", "created_at"],
   users: ["user_id", "display_name", "password_hash", "email", "created_at"],
   sessions: ["token", "user_id", "expires_at", "created_at"],
+  dimension_evidence: ["id", "user_id", "team_id", "dimension", "evidence_level", "quality_score", "summary", "quote", "chat_round", "created_at"],
 };
 
 // 校验已存在的表是否拥有期望的列；不匹配则 DROP 重建
@@ -98,6 +99,20 @@ const CREATE_SESSIONS = `CREATE TABLE IF NOT EXISTS sessions (
   FOREIGN KEY (user_id) REFERENCES users(user_id)
 )`;
 
+const CREATE_DIMENSION_EVIDENCE = `CREATE TABLE IF NOT EXISTS dimension_evidence (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  team_id TEXT NOT NULL,
+  dimension TEXT NOT NULL,
+  evidence_level TEXT NOT NULL,
+  quality_score REAL NOT NULL,
+  summary TEXT,
+  quote TEXT,
+  chat_round INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+)`;
+
 // 建表（幂等执行，应用启动时调用一次即可）
 export async function initDb() {
   const db = getDb();
@@ -108,6 +123,7 @@ export async function initDb() {
   await ensureTableSchema(db, "chat_history", CREATE_CHAT_HISTORY);
   await ensureTableSchema(db, "users", CREATE_USERS);
   await ensureTableSchema(db, "sessions", CREATE_SESSIONS);
+  await ensureTableSchema(db, "dimension_evidence", CREATE_DIMENSION_EVIDENCE);
 
   // 建表（IF NOT EXISTS 保证幂等）
   await db.executeMultiple(`
@@ -116,11 +132,14 @@ export async function initDb() {
     ${CREATE_CHAT_HISTORY};
     ${CREATE_USERS};
     ${CREATE_SESSIONS};
+    ${CREATE_DIMENSION_EVIDENCE};
 
     CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team_id);
     CREATE INDEX IF NOT EXISTS idx_chat_user ON chat_history(user_id);
     CREATE INDEX IF NOT EXISTS idx_chat_team ON chat_history(team_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_user ON dimension_evidence(user_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_dimension ON dimension_evidence(dimension);
   `);
 
   // 迁移：为已存在的 users 表补齐 email 列（CREATE TABLE IF NOT EXISTS 不会改已存在表结构）

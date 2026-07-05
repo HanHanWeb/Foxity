@@ -26,11 +26,11 @@ export default function CreateTeamPage() {
   const visibleCount = 5; // 中间 + 左右各2
   const half = Math.floor(visibleCount / 2);
 
-  // 点击两侧 emoji 滚动到该位置；点击中间不做事
+  // 只能点击相邻的左右两个（pos=±1），中间不响应，更远的纯展示
   const selectEmoji = (idx: number) => {
-    if (idx === emojiIndex) return;
     const diff = getRelativePos(idx);
-    directionRef.current = diff > 0 ? 1 : -1;
+    if (Math.abs(diff) !== 1) return;
+    directionRef.current = diff;
     setEmojiIndex(idx);
   };
 
@@ -189,13 +189,14 @@ export default function CreateTeamPage() {
                         const pos = getRelativePos(i);
                         if (Math.abs(pos) > half) return null;
                         const isActive = pos === 0;
+                        const isClickable = Math.abs(pos) === 1;
                         // 新进入的边缘 emoji，根据切换方向从对应侧滑入
                         const isEntering = Math.abs(pos) === half;
                         return (
                           <motion.button
                             key={emoji}
                             type="button"
-                            onClick={() => selectEmoji(i)}
+                            onClick={() => isClickable && selectEmoji(i)}
                             initial={isEntering ? { x: pos * 48 + directionRef.current * 80, opacity: 0 } : false}
                             animate={{
                               x: pos * 48,
@@ -206,8 +207,10 @@ export default function CreateTeamPage() {
                             className={cn(
                               "absolute flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl",
                               isActive
-                                ? "border-fox-orange bg-fox-orange/10"
-                                : "border-fox-gray-light bg-white"
+                                ? "border-fox-orange bg-fox-orange/10 cursor-default"
+                                : isClickable
+                                ? "border-fox-gray-light bg-white cursor-pointer"
+                                : "border-transparent bg-transparent cursor-default"
                             )}
                             style={{ zIndex: isActive ? 10 : 5 - Math.abs(pos) }}
                           >

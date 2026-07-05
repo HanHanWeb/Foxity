@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
     const teamName = (teamRes.rows[0] as unknown as { team_name: string }).team_name;
     const inviter = inviterName || "你的队友";
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://foxity.app"}/team/${team_id}/join`;
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://foxity.900004.xyz/"}/team/${team_id}/join`;
 
     const subject = `${inviter} 邀请你加入「${teamName}」团队 · Foxity`;
     const html = `

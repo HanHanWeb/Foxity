@@ -310,6 +310,11 @@ export const useStore = create<StoreState>((set, get) => ({
         priority: g.priority === "高" ? "high" : g.priority === "中" ? "medium" : "low",
       })),
       v2_assessment: data,
+      // V3 评分数据
+      v3_score_data: (data as any).v3_score_data,
+      v3_credibility: (data as any).v3_credibility,
+      v3_type: (data as any).v3_type,
+      v3_soft_skills: (data as any).v3_soft_skills,
     };
     set({ currentProfile: updated });
   },

@@ -324,12 +324,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
   deleteTeam: async (teamId) => {
     try {
+      console.log("[deleteTeam] sending DELETE for", teamId);
       const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
+      console.log("[deleteTeam] response status:", res.status, "ok:", res.ok);
       if (!res.ok) {
-        console.error("deleteTeam error:", res.status);
+        const errText = await res.text();
+        console.error("deleteTeam error response:", errText);
         return null;
       }
       const data = await res.json();
+      console.log("[deleteTeam] response data:", data);
       const action = data.action as "deleted" | "left";
       // 从内存中移除该团队及其成员画像
       set((state) => ({

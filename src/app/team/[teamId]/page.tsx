@@ -90,10 +90,11 @@ export default function TeamDashboardPage() {
     const action = await deleteTeam(params.teamId);
     setDeleting(false);
     setShowDeleteDialog(false);
-    if (action === "deleted") {
+    if (action === "deleted" || action === "left") {
       router.push("/dashboard");
-    } else if (action === "left") {
-      router.push("/dashboard");
+    } else {
+      // 删除失败，提示用户（可改为 toast）
+      alert("删除失败，请检查网络或稍后重试");
     }
   };
 

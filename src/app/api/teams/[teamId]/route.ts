@@ -24,9 +24,13 @@ export async function GET(
     const teamRow = teamResult.rows[0];
 
     // 权限校验：只有创建者（队长）能查看完整看板
+    // owner 为 null（历史无主团队）时，允许已登录用户查看
     const userId = await getUserId();
     const ownerId = teamRow.owner_user_id as string | null;
-    if (!ownerId || !userId || ownerId !== userId) {
+    if (!userId) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+    if (ownerId !== null && ownerId !== userId) {
       return NextResponse.json(
         { error: "无权查看，只有队长可以访问团队看板" },
         { status: 403 }
@@ -98,12 +102,37 @@ export async function DELETE(
     }
 
     const ownerId = teamRes.rows[0].owner_user_id as string | null;
+    console.log("[DELETE team] teamId:", teamId, "userId:", userId, "ownerId:", ownerId);
 
-    if (ownerId === userId) {
+    // 权限判断：owner 匹配，或 owner 为 null（历史无主团队）允许已登录用户删除
+    const isOwner = ownerId === userId;
+    const canDelete = isOwner || ownerId === null;
+
+    if (canDelete) {
       // 队长删除团队：删除所有关联数据
-      await db.execute({ sql: `DELETE FROM chat_history WHERE team_id = ?`, args: [teamId] });
-      await db.execute({ sql: `DELETE FROM profiles WHERE team_id = ?`, args: [teamId] });
-      await db.execute({ sql: `DELETE FROM teams WHERE team_id = ?`, args: [teamId] });
+      // 用 try-catch 包裹子表删除，避免外键约束等问题导致 teams 行没被删
+      try {
+        await db.execute({ sql: `DELETE FROM chat_history WHERE team_id = ?`, args: [teamId] });
+      } catch (e) {
+        console.warn("[DELETE team] chat_history delete failed:", e);
+      }
+      try {
+        await db.execute({ sql: `DELETE FROM dimension_evidence WHERE team_id = ?`, args: [teamId] });
+      } catch (e) {
+        console.warn("[DELETE team] dimension_evidence delete failed:", e);
+      }
+      try {
+        await db.execute({ sql: `DELETE FROM profiles WHERE team_id = ?`, args: [teamId] });
+      } catch (e) {
+        console.warn("[DELETE team] profiles delete failed:", e);
+      }
+      try {
+        await db.execute({ sql: `DELETE FROM teams WHERE team_id = ?`, args: [teamId] });
+      } catch (e) {
+        console.error("[DELETE team] teams delete failed:", e);
+        return NextResponse.json({ error: "删除团队失败", details: String(e) }, { status: 500 });
+      }
+      console.log("[DELETE team] success, teamId:", teamId);
       return NextResponse.json({ action: "deleted" });
     } else {
       // 成员退出团队：删除自己的 profile 和聊天记录

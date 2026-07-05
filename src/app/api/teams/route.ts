@@ -68,6 +68,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const userId = await getUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "请先登录再创建团队" }, { status: 401 });
+    }
     const body = await req.json();
     let { team_name, competition_type, organizer_name, team_emoji } = body;
     // 允许调用方传入 team_id（兼容前端 store 的查重流程），但优先服务端生成
@@ -75,7 +78,7 @@ export async function POST(req: Request) {
     competition_type = competition_type || "默认";
     organizer_name = organizer_name || "";
     team_emoji = team_emoji || "";
-    const owner_user_id = userId || body.owner_user_id || null;
+    const owner_user_id = userId; // 一定是登录用户
     const created_at = new Date().toISOString();
 
     const db = getDb();

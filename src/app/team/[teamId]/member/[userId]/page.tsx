@@ -35,13 +35,17 @@ export default function MemberSummaryPage() {
   }, [profiles, params.userId]);
 
   const [chatHistory, setChatHistory] = useState<ChatMessageType[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const res = await fetch(`/api/chat-history/${params.userId}?team_id=${params.teamId}`);
+        const url = `/api/chat-history/${params.userId}?team_id=${params.teamId}`;
+        console.log("[member-detail] fetching:", url, "userId:", params.userId, "teamId:", params.teamId);
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
+          console.log("[member-detail] chat-history response count:", data?.length, data);
           setChatHistory(
             (data as any[]).map((m) => ({
               role: m.role,
@@ -50,9 +54,13 @@ export default function MemberSummaryPage() {
               timestamp: m.created_at,
             }))
           );
+        } else {
+          console.warn("[member-detail] chat-history response not ok:", res.status, await res.text());
         }
       } catch (e) {
         console.error("load chat history error:", e);
+      } finally {
+        setHistoryLoaded(true);
       }
     };
     loadChatHistory();
@@ -60,6 +68,8 @@ export default function MemberSummaryPage() {
 
   useEffect(() => {
     const generateSummary = async () => {
+      // 等聊天记录加载完成后再判断
+      if (!historyLoaded) return;
       if (!profile || chatHistory.length === 0) {
         setLoading(false);
         return;
@@ -92,7 +102,7 @@ export default function MemberSummaryPage() {
     };
 
     generateSummary();
-  }, [profile, chatHistory]);
+  }, [profile, chatHistory, historyLoaded]);
 
   if (!profile) {
     return (
@@ -156,18 +166,19 @@ export default function MemberSummaryPage() {
   return (
     <main className="min-h-screen bg-[#fbf7ef] pb-12">
       <header className="sticky top-0 z-30 border-b border-fox-gray-light bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 md:px-6">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
           <Button variant="ghost" size="sm" onClick={() => router.push(`/team/${params.teamId}`)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            返回团队看板
+            <ArrowLeft className="mr-1 h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">返回团队看板</span>
+            <span className="sm:hidden">返回</span>
           </Button>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* 成员头部 */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <h1 className="text-3xl font-bold text-fox-navy">{profile.user_name}</h1>
+          <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{profile.user_name}</h1>
           {!loading && leaderSummary && topScores.length > 0 && (
             <p className="mt-2 text-sm text-fox-gray">
               {topScores.map((s, i) => (
@@ -205,10 +216,10 @@ export default function MemberSummaryPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mt-8 space-y-6"
+            className="mt-6 space-y-4 md:mt-8 md:space-y-6"
           >
             {/* AI 可视化分析总览 */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 md:gap-6">
               {/* 能力雷达图 */}
               {radarData.length > 0 && (
                 <Card>
@@ -220,7 +231,9 @@ export default function MemberSummaryPage() {
                     <CardDescription>AI 分析的五大硬技能分布</CardDescription>
                   </CardHeader>
                   <CardContent className="flex justify-center">
-                    <AbilityRadar data={radarData} size={260} />
+                    <div className="h-[260px] w-full max-w-[300px]">
+                      <AbilityRadar data={radarData} fullWidth />
+                    </div>
                   </CardContent>
                 </Card>
               )}

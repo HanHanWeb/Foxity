@@ -73,14 +73,15 @@ export async function GET(
         console.error("Failed to parse profile data for user", row.user_id, e);
       }
       const meta = memberMeta[row.user_id as string] || { role: "member", position: "" };
+      // 展平 parsedData 到顶层，确保前端能直接访问 v3_score_data / abilities / v3_credibility 等字段
       return {
         user_id: row.user_id,
         user_name: row.user_name,
         team_id: row.team_id,
         timestamp: row.timestamp,
-        data: parsedData,
         role: meta.role,
         position: meta.position,
+        ...(parsedData || {}),
       };
     });
 

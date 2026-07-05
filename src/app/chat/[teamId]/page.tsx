@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Menu, Lightbulb, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,9 @@ import { useAuth } from "@/lib/auth";
 
 function ChatPageInner() {
   const params = useParams<{ teamId: string }>();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth(false);
+  const { user, loading } = useAuth(true);
 
   const messages = useStore((state) => state.messages);
   const addMessage = useStore((state) => state.addMessage);
@@ -36,14 +35,26 @@ function ChatPageInner() {
   const [progress, setProgress] = useState(0);
   const [assessmentDone, setAssessmentDone] = useState(false);
   const [highlights, setHighlights] = useState<string[]>([]);
-  const userName = user?.name || searchParams.get("user") || "你";
+  const userName = user?.name || "你";
 
   useEffect(() => {
-    if (messages.length === 0 && user) {
+    if (messages.length === 0 && user && params.teamId) {
       startConversation(userName, user.user_id, params.teamId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, params.teamId]);
+
+  // 未登录或加载中时显示等待界面，避免 currentProfile 为 null 导致保存失败
+  if (loading || !user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-fox-cream/30">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-fox-orange border-t-transparent" />
+          <p className="text-sm text-fox-gray">{loading ? "加载中..." : "请先登录"}</p>
+        </div>
+      </main>
+    );
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

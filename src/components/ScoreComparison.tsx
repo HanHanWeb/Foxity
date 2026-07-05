@@ -13,28 +13,25 @@ export function ScoreComparison({ profile }: ScoreComparisonProps) {
   const selfScoresMap: Record<string, number> =
     profile.v3_score_data?.self_scores || {};
 
-  const abilities = (Object.keys(profile.abilities) as HardSkillKey[]).filter(
-    (key) => {
-      const v3Score = selfScoresMap[key];
-      return v3Score !== undefined && v3Score > 0;
-    }
-  );
+  // 兜底：如果 v3_score_data 没有 self_scores，从 abilities 的 self_score 字段读取
+  const allAbilities = (Object.keys(profile.abilities || {}) as HardSkillKey[]);
+  const abilities = allAbilities.filter((key) => {
+    const v3Score = selfScoresMap[key];
+    if (v3Score !== undefined && v3Score > 0) return true;
+    // 兜底：abilities 自带 self_score > 0 也算
+    const ab = profile.abilities?.[key];
+    return ab && (ab.self_score ?? 0) > 0;
+  });
 
-  // 刚测评完成但 V3 数据尚未就绪时，显示 loading 转圈
   const hasV3Data = !!profile.v3_score_data;
-  if (abilities.length === 0 && !hasV3Data) {
+  if (abilities.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-fox-gray-light bg-fox-gray-bg p-6 text-center">
-        <p className="text-sm text-fox-gray">暂无自评数据，完成测评后可查看对比分析。</p>
-      </div>
-    );
-  }
-
-  if (abilities.length === 0 && hasV3Data) {
-    return (
-      <div className="flex items-center justify-center rounded-xl border border-fox-gray-light bg-white p-6">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-fox-orange border-t-transparent" />
-        <span className="ml-3 text-sm text-fox-gray">正在生成对比分析…</span>
+        <p className="text-sm text-fox-gray">
+          {hasV3Data
+            ? "自评数据尚未生成，可能 AI 未捕获到自评信号。"
+            : "暂无自评数据，完成测评后可查看对比分析。"}
+        </p>
       </div>
     );
   }
@@ -43,8 +40,9 @@ export function ScoreComparison({ profile }: ScoreComparisonProps) {
     <div className="space-y-3">
       {abilities.map((key, idx) => {
         const ability = profile.abilities[key];
-        const selfScore = selfScoresMap[key] ?? ability.self_score ?? ability.score;
-        const actual = ability.score;
+        if (!ability) return null;
+        const selfScore = selfScoresMap[key] ?? ability.self_score ?? ability.score ?? 0;
+        const actual = ability.score ?? 0;
         const diff = actual - selfScore;
         const isLow = diff > 0;
         const isHigh = diff < 0;

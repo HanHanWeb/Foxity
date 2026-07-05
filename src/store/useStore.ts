@@ -95,15 +95,20 @@ export const useStore = create<StoreState>((set, get) => ({
   loadTeam: async (teamId) => {
     try {
       const res = await fetch(`/api/teams/${teamId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn("[loadTeam] API not ok:", res.status);
+        return;
+      }
       const data = await res.json();
       const team: Team = data;
+      console.log("[loadTeam] members count:", team.members?.length, "role:", data.currentUserRole);
       set((state) => ({
         currentTeam: team,
         teams: state.teams.some((t) => t.team_id === team.team_id)
           ? state.teams.map((t) => (t.team_id === team.team_id ? team : t))
           : [...state.teams, team],
-        profiles: team.members.length > 0 ? team.members : mockProfiles,
+        // members 为空时不要回退 mock，否则页面永远显示假数据
+        profiles: team.members.length > 0 ? team.members : [],
         currentUserRole: (data.currentUserRole as "leader" | "member") || null,
         currentUserId: data.currentUserId || null,
       }));
@@ -190,7 +195,8 @@ export const useStore = create<StoreState>((set, get) => ({
     const messages = [...get().messages, msg];
     set({ messages });
     const profile = get().currentProfile;
-    if (profile?.user_id) {
+    console.log("[addMessage] role:", msg.role, "profile?.user_id:", profile?.user_id, "team_id:", profile?.team_id);
+    if (profile?.user_id && profile?.team_id) {
       fetch("/api/chat-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -202,6 +208,8 @@ export const useStore = create<StoreState>((set, get) => ({
           emotion: msg.emotion ?? msg.expression,
         }),
       }).catch((e) => console.error("save chat-history error:", e));
+    } else {
+      console.warn("[addMessage] 跳过保存：currentProfile 或 user_id/team_id 为空", profile);
     }
   },
 

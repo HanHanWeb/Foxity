@@ -215,11 +215,12 @@ export default function TeamDashboardPage() {
   }, [params.teamId, loadTeam]);
 
   const realTeam = teams.find((item) => item.team_id === params.teamId);
-  const team = loadingTeam ? null : realTeam ?? mockTeam;
+  const team = loadingTeam ? null : realTeam ?? null;
+  // 真实数据优先；未加载完或无真实团队时用空数组，不回退 mock 避免显示假数据
   const teamProfiles = !loadingTeam && realTeam
     ? profiles.filter((p) => p.team_id === params.teamId)
     : !loadingTeam
-    ? mockProfiles
+    ? []
     : [];
 
   useEffect(() => {
@@ -336,12 +337,25 @@ export default function TeamDashboardPage() {
     router.push(`/profile/${params.teamId}`);
   };
 
-  if (loadingTeam || !team) {
+  if (loadingTeam) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-fox-cream/30">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-fox-orange" />
           <p className="text-sm text-fox-gray">加载团队数据...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!team) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-fox-cream/30">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm text-fox-gray">未找到该团队或加载失败</p>
+          <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
+            返回工作台
+          </Button>
         </div>
       </main>
     );
@@ -380,16 +394,16 @@ export default function TeamDashboardPage() {
 
         <div className="fox-card overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="min-w-[640px]">
+            <div className="min-w-[480px] sm:min-w-[640px]">
               {/* 表头 */}
-              <div className="grid grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] bg-fox-navy text-sm font-semibold text-white">
-                <div className="p-3">队员</div>
+              <div className="grid grid-cols-[100px_repeat(5,minmax(80px,1fr))_100px] bg-fox-navy text-xs font-semibold text-white sm:grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] sm:text-sm">
+                <div className="p-2 text-center sm:p-3">队员</div>
                 {hardSkillMeta.map((dim) => (
-                  <div key={dim.key} className="p-3 text-center">
+                  <div key={dim.key} className="p-2 text-center sm:p-3">
                     {dim.icon} {dim.shortName}
                   </div>
                 ))}
-                <div className="p-3 text-center">可信度</div>
+                <div className="p-2 text-center sm:p-3">可信度</div>
               </div>
 
               {/* 成员行 */}
@@ -399,11 +413,11 @@ export default function TeamDashboardPage() {
                 return (
                   <div
                     key={profile.user_id}
-                    className="grid grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] cursor-pointer border-t border-fox-gray-light text-sm hover:bg-fox-cream/50"
+                    className="grid grid-cols-[100px_repeat(5,minmax(80px,1fr))_100px] cursor-pointer border-t border-fox-gray-light text-xs hover:bg-fox-cream/50 sm:grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] sm:text-sm"
                     onClick={() => goToMemberDetail(profile.user_id)}
                   >
-                    <div className="flex items-center gap-2 p-3 font-medium text-fox-navy">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-fox-cream text-xs font-bold text-fox-orange">
+                    <div className="flex items-center gap-1.5 p-2 font-medium text-fox-navy sm:gap-2 sm:p-3">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fox-cream text-xs font-bold text-fox-orange sm:h-7 sm:w-7">
                         {profile.user_name[0]}
                       </div>
                       <span className="truncate">{profile.user_name}</span>
@@ -414,7 +428,7 @@ export default function TeamDashboardPage() {
                         <div
                           key={dim.key}
                           className={cn(
-                            "p-3 text-center font-semibold tabular-nums",
+                            "p-2 text-center font-semibold tabular-nums sm:p-3",
                             matrixCellClass(score)
                           )}
                         >
@@ -422,7 +436,7 @@ export default function TeamDashboardPage() {
                         </div>
                       );
                     })}
-                    <div className="p-3 text-center">
+                    <div className="p-2 text-center sm:p-3">
                       {credibilityLevel ? (
                         <span
                           className={cn(
@@ -441,17 +455,17 @@ export default function TeamDashboardPage() {
               })}
 
               {/* 团队均分行 */}
-              <div className="grid grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] border-t border-fox-gray-light bg-fox-gray-bg text-sm font-semibold text-fox-navy">
-                <div className="p-3">团队均分</div>
+              <div className="grid grid-cols-[100px_repeat(5,minmax(80px,1fr))_100px] border-t border-fox-gray-light bg-fox-gray-bg text-xs font-semibold text-fox-navy sm:grid-cols-[140px_repeat(5,minmax(90px,1fr))_120px] sm:text-sm">
+                <div className="p-2 text-center sm:p-3">团队均分</div>
                 {hardSkillMeta.map((dim) => {
                   const avg = teamAnalysis?.dimensionAverages[dim.key] || 0;
                   return (
-                    <div key={dim.key} className="p-3 text-center tabular-nums">
+                    <div key={dim.key} className="p-2 text-center tabular-nums sm:p-3">
                       {avg ? avg.toFixed(1) : "—"}
                     </div>
                   );
                 })}
-                <div className="p-3 text-center text-fox-gray">—</div>
+                <div className="p-2 text-center text-fox-gray sm:p-3">—</div>
               </div>
             </div>
           </div>
@@ -571,7 +585,7 @@ export default function TeamDashboardPage() {
     }
     return (
       <div className="flex flex-col items-center gap-4 md:flex-row">
-        <div className="h-64 w-full md:w-1/2">
+        <div className="h-48 w-full sm:h-64 md:w-1/2">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -783,7 +797,7 @@ export default function TeamDashboardPage() {
     const isSelf = profile.user_id === useStore.getState().currentUserId;
 
     return (
-      <Card key={profile.user_id} className="transition-all hover:shadow-md">
+      <Card key={profile.user_id} className="gap-0 py-0 transition-all hover:shadow-md">
         <CardContent className="p-4">
           {/* 头部：头像+姓名+角色标签 */}
           <div className="flex items-start gap-3">
@@ -935,7 +949,7 @@ export default function TeamDashboardPage() {
     const twelveType = getTwelveTypeLabel(profile);
 
     return (
-      <Card key={profile.user_id} className="transition-all hover:shadow-md">
+      <Card key={profile.user_id} className="gap-0 py-0 transition-all hover:shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-fox-cream text-lg font-bold text-fox-orange">
@@ -992,29 +1006,29 @@ export default function TeamDashboardPage() {
   return (
     <main className="min-h-screen bg-fox-cream/30 pb-12">
       <header className="border-b border-fox-gray-light bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            返回
+            <span className="hidden sm:inline">返回</span>
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleShare}>
               {shared ? (
                 <>
-                  <Check className="mr-2 h-4 w-4" />
-                  已复制
+                  <Check className="mr-1 h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">已复制</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  分享看板
+                  <Share2 className="mr-1 h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">分享看板</span>
                 </>
               )}
             </Button>
             {isLeader && (
               <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                删除团队
+                <Trash2 className="mr-1 h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">删除团队</span>
               </Button>
             )}
           </div>
@@ -1075,12 +1089,12 @@ export default function TeamDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* 团队标题区 */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">
+              <h1 className="text-xl font-bold text-fox-navy md:text-3xl">
                 {team.team_emoji && <span className="mr-2">{team.team_emoji}</span>}
                 {team.team_name}
               </h1>
@@ -1126,12 +1140,12 @@ export default function TeamDashboardPage() {
         </div>
 
         <Tabs defaultValue="matrix" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-3">
-            <TabsTrigger value="matrix">
+          <TabsList className="mb-4 grid w-full grid-cols-3 md:mb-6">
+            <TabsTrigger value="matrix" className="text-xs sm:text-sm">
               {isLeader ? "能力矩阵" : "亮点墙"}
             </TabsTrigger>
-            <TabsTrigger value="distribution">分布分析</TabsTrigger>
-            <TabsTrigger value="members">成员列表</TabsTrigger>
+            <TabsTrigger value="distribution" className="text-xs sm:text-sm">分布分析</TabsTrigger>
+            <TabsTrigger value="members" className="text-xs sm:text-sm">成员列表</TabsTrigger>
           </TabsList>
 
           {/* Tab 1：能力矩阵 / 亮点墙 */}
@@ -1140,7 +1154,7 @@ export default function TeamDashboardPage() {
           </TabsContent>
 
           {/* Tab 2：分布分析 */}
-          <TabsContent value="distribution" className="space-y-6">
+          <TabsContent value="distribution" className="space-y-4 md:space-y-6">
             {/* 模块一：12型角色分布 */}
             <Card>
               <CardHeader>
@@ -1175,8 +1189,8 @@ export default function TeamDashboardPage() {
           </TabsContent>
 
           {/* Tab 3：成员列表 */}
-          <TabsContent value="members" className="space-y-4">
-            <h2 className="text-lg font-bold text-fox-navy">成员列表</h2>
+          <TabsContent value="members" className="space-y-2">
+            <h2 className="text-base font-bold text-fox-navy md:text-lg">成员列表</h2>
             {displayProfiles.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-fox-gray-light bg-white p-10 text-center">
                 <p className="text-sm text-fox-gray">

@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Users, Share2, Eye, EyeOff, Copy, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Share2, Eye, EyeOff, Copy, Check, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { TeamMatrix } from "@/components/TeamMatrix";
 import { CopyButton } from "@/components/CopyButton";
 import { useStore } from "@/store/useStore";
@@ -21,10 +29,13 @@ export default function TeamDashboardPage() {
   const teams = useStore((state) => state.teams);
   const profiles = useStore((state) => state.profiles);
   const loadTeam = useStore((state) => state.loadTeam);
+  const deleteTeam = useStore((state) => state.deleteTeam);
   const [showRealNames, setShowRealNames] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [shared, setShared] = useState(false);
   const [loadingTeam, setLoadingTeam] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -69,6 +80,20 @@ export default function TeamDashboardPage() {
       setTimeout(() => setShared(false), 1500);
     } catch {
       // 忽略
+    }
+  };
+
+  // 删除/退出团队
+  const handleDeleteTeam = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    const action = await deleteTeam(params.teamId);
+    setDeleting(false);
+    setShowDeleteDialog(false);
+    if (action === "deleted") {
+      router.push("/dashboard");
+    } else if (action === "left") {
+      router.push("/dashboard");
     }
   };
 
@@ -150,9 +175,39 @@ export default function TeamDashboardPage() {
                 </>
               )}
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              删除团队
+            </Button>
           </div>
         </div>
       </header>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除团队</DialogTitle>
+            <DialogDescription>
+              确定要删除团队「{team.team_name}」吗？该操作会清除所有成员画像和聊天记录，且无法撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTeam} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                "确认删除"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <div className="mb-8">

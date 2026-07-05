@@ -36,6 +36,7 @@ interface StoreState {
   triggerKeyEvent: (type: "stress" | "conflict") => void;
   addInsight: (insight: { icon: string; text: string }) => void;
   applyAssessment: (data: V2AssessmentData) => void;
+  deleteTeam: (teamId: string) => Promise<"deleted" | "left" | null>;
 }
 
 function getInitialProfile(): UserProfile {
@@ -319,5 +320,27 @@ export const useStore = create<StoreState>((set, get) => ({
       v3_soft_skills: (data as any).v3_soft_skills,
     };
     set({ currentProfile: updated });
+  },
+
+  deleteTeam: async (teamId) => {
+    try {
+      const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
+      if (!res.ok) {
+        console.error("deleteTeam error:", res.status);
+        return null;
+      }
+      const data = await res.json();
+      const action = data.action as "deleted" | "left";
+      // 从内存中移除该团队及其成员画像
+      set((state) => ({
+        teams: state.teams.filter((t) => t.team_id !== teamId),
+        profiles: state.profiles.filter((p) => p.team_id !== teamId),
+        currentTeam: state.currentTeam?.team_id === teamId ? null : state.currentTeam,
+      }));
+      return action;
+    } catch (e) {
+      console.error("deleteTeam error:", e);
+      return null;
+    }
   },
 }));

@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeft, Share2, Download, Sparkles, BarChart3, Heart, BookHeart, MessageCircle, Crown, GraduationCap, TrendingUp, Tags, Radar, GitCompare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -203,10 +202,7 @@ export default function ProfilePage() {
         </div>
       ) : data && (
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+        <div
           className="mb-8 flex flex-col items-center text-center md:flex-row md:items-start md:gap-6 md:text-left"
         >
           <div className="relative">
@@ -223,21 +219,16 @@ export default function ProfilePage() {
             <p className="mt-1 text-sm text-fox-gray">{teamEmoji && <span className="mr-1">{teamEmoji}</span>}{teamName}</p>
             <p className="mt-2 max-w-2xl text-sm text-fox-navy/80">{data.overview_summary}</p>
           </div>
-        </motion.div>
+        </div>
 
         {/* 提醒：继续对话可提升准确性 */}
         {(currentProfile || dbProfile) && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="mb-6 flex items-center gap-3 rounded-xl border border-fox-orange/30 bg-fox-orange/8 px-4 py-3"
-          >
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-fox-orange/30 bg-fox-orange/8 px-4 py-3">
             <Sparkles className="h-4 w-4 flex-shrink-0 text-fox-orange" />
             <p className="text-sm text-fox-navy/80">
               画像已生成，但聊得越深，Foxity 看得越清——回到对话继续聊聊，可以提升评估的综合准确性。
             </p>
-          </motion.div>
+          </div>
         )}
 
         <Tabs defaultValue="overview" className="w-full">
@@ -322,12 +313,8 @@ export default function ProfilePage() {
                         <h4 className="mb-2 text-sm font-semibold text-fox-navy">{category}</h4>
                         <div className="flex flex-wrap gap-2">
                           {tags.map((item, idx) => (
-                            <motion.span
+                            <span
                               key={`${catIdx}-${idx}`}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3, delay: (catIdx * 3 + idx) * 0.04 }}
-                              whileHover={{ scale: 1.05 }}
                               className="cursor-default rounded-full px-3 py-1.5 text-sm font-medium"
                               style={{
                                 backgroundColor: item.confidence === "high" ? themeYellow : item.confidence === "medium" ? themeYellow : `${themeYellow}80`,
@@ -336,7 +323,7 @@ export default function ProfilePage() {
                               title={item.evidence}
                             >
                               {item.tag}
-                            </motion.span>
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -396,12 +383,7 @@ export default function ProfilePage() {
                     const label = meta?.name || val.label || key;
                     const Icon = softSkillIcons[key as SoftSkillKey];
                     return (
-                      <motion.div
-                        key={key}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: idx * 0.05 }}
-                      >
+                      <div key={key}>
                         <div className="mb-2 flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 font-medium text-fox-navy">
                             {Icon && <Icon className="h-4 w-4 text-fox-navy" />}
@@ -410,14 +392,12 @@ export default function ProfilePage() {
                           <span className="font-semibold text-fox-navy">{val.score}/10</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-fox-gray-bg">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${val.score * 10}%` }}
-                            transition={{ duration: 0.6, delay: idx * 0.05 }}
+                          <div
                             className="h-full rounded-full bg-fox-mint"
+                            style={{ width: `${val.score * 10}%` }}
                           />
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </CardContent>
@@ -447,11 +427,8 @@ export default function ProfilePage() {
                 {sortedSuggestions.map((suggestion, idx) => {
                   const style = priorityStyle[suggestion.priority] || priorityStyle.medium;
                   return (
-                    <motion.div
+                    <div
                       key={idx}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.08 }}
                       className="flex gap-4 rounded-xl border border-fox-gray-light bg-white p-4"
                     >
                       <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${style.dot}`}>
@@ -466,7 +443,7 @@ export default function ProfilePage() {
                         </div>
                         <p className="mt-1 text-sm text-fox-gray">{suggestion.suggestion}</p>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </CardContent>

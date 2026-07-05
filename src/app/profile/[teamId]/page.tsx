@@ -180,7 +180,7 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8 flex flex-col items-center text-center md:flex-row md:items-end md:gap-6 md:text-left"
+          className="mb-8 flex flex-col items-center text-center md:flex-row md:items-start md:gap-6 md:text-left"
         >
           <div className="relative">
             <img src="/fox.png" alt={data.user_name} width={100} height={100} className="rounded-2xl" />
@@ -191,12 +191,27 @@ export default function ProfilePage() {
               {data.core_positioning}
             </Badge>
           </div>
-          <div className="mt-4 md:mt-0 md:pb-2">
+          <div className="mt-4 md:mt-0">
             <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{data.user_name}</h1>
             <p className="mt-1 text-sm text-fox-gray">{teamEmoji && <span className="mr-1">{teamEmoji}</span>}{teamName}</p>
             <p className="mt-2 max-w-md text-sm text-fox-navy/80">{data.overview_summary}</p>
           </div>
         </motion.div>
+
+        {/* 提醒：继续对话可提升准确性 */}
+        {(currentProfile || dbProfile) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="mb-6 flex items-center gap-3 rounded-xl border border-fox-orange/30 bg-fox-orange/8 px-4 py-3"
+          >
+            <Sparkles className="h-4 w-4 flex-shrink-0 text-fox-orange" />
+            <p className="text-sm text-fox-navy/80">
+              画像已生成，但聊得越深，Foxity 看得越清——回到对话继续聊聊，可以提升评估的综合准确性。
+            </p>
+          </motion.div>
+        )}
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-6 grid w-full grid-cols-4">

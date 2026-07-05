@@ -9,14 +9,32 @@ interface ScoreComparisonProps {
 }
 
 export function ScoreComparison({ profile }: ScoreComparisonProps) {
+  // V3 自评数据优先从 v3_score_data.self_scores 读取，兼容旧版 abilities.self_score
+  const selfScoresMap: Record<string, number> =
+    profile.v3_score_data?.self_scores || {};
+
   const abilities = (Object.keys(profile.abilities) as HardSkillKey[]).filter(
-    (key) => profile.abilities[key].self_score !== undefined
+    (key) => {
+      const v3Score = selfScoresMap[key];
+      return v3Score !== undefined && v3Score > 0;
+    }
   );
 
-  if (abilities.length === 0) {
+  // 刚测评完成但 V3 数据尚未就绪时，显示 loading 转圈
+  const hasV3Data = !!profile.v3_score_data;
+  if (abilities.length === 0 && !hasV3Data) {
     return (
       <div className="rounded-xl border border-dashed border-fox-gray-light bg-fox-gray-bg p-6 text-center">
         <p className="text-sm text-fox-gray">暂无自评数据，完成测评后可查看对比分析。</p>
+      </div>
+    );
+  }
+
+  if (abilities.length === 0 && hasV3Data) {
+    return (
+      <div className="flex items-center justify-center rounded-xl border border-fox-gray-light bg-white p-6">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-fox-orange border-t-transparent" />
+        <span className="ml-3 text-sm text-fox-gray">正在生成对比分析…</span>
       </div>
     );
   }
@@ -25,7 +43,7 @@ export function ScoreComparison({ profile }: ScoreComparisonProps) {
     <div className="space-y-3">
       {abilities.map((key, idx) => {
         const ability = profile.abilities[key];
-        const selfScore = ability.self_score ?? ability.score;
+        const selfScore = selfScoresMap[key] ?? ability.self_score ?? ability.score;
         const actual = ability.score;
         const diff = actual - selfScore;
         const isLow = diff > 0;

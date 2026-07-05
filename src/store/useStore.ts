@@ -13,6 +13,7 @@ import type {
   V2AssessmentData,
 } from "@/types";
 import { createId } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface StoreState {
   currentTeam: Team | null;
@@ -21,7 +22,6 @@ interface StoreState {
   currentProfile: UserProfile | null;
   messages: ChatMessage[];
   assessmentState: AssessmentState;
-  hydrate: () => void;
   loadTeam: (teamId: string) => Promise<void>;
   createTeam: (name: string, type: string, organizer: string, emoji?: string) => Promise<string>;
   joinTeam: (teamId: string, userName: string, userId?: string) => Promise<UserProfile>;
@@ -82,18 +82,6 @@ export const useStore = create<StoreState>((set, get) => ({
   messages: [],
   assessmentState: initialAssessmentState,
 
-  hydrate: () => {
-    // 保留：某些页面挂载时可以显式重置内存状态到干净初值
-    set({
-      teams: [],
-      profiles: [],
-      currentTeam: null,
-      currentProfile: null,
-      currentUserRole: null,
-      currentUserId: null,
-    });
-  },
-
   loadTeam: async (teamId) => {
     try {
       const res = await fetch(`/api/teams/${teamId}`);
@@ -137,9 +125,14 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error("createTeam api error:", res.status, errText);
+      toast.error("创建团队失败", res.status === 401 ? "请先登录" : undefined);
       throw new Error("创建团队失败");
     }
     const data = await res.json();
+    if (!data?.team_id) {
+      toast.error("创建团队失败", "服务端未返回有效的团队 ID");
+      throw new Error("服务端未返回 team_id");
+    }
     const team: Team = {
       team_id: data.team_id,
       team_name: data.team_name || name,
@@ -157,9 +150,23 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   joinTeam: async (teamId, userName, userId) => {
+    // 优先使用入参 userId，但尝试用 session 真实 user_id 覆盖，避免伪造
+    let effectiveUserId = userId || createId("user");
+    try {
+      const meRes = await fetch("/api/auth/me", { credentials: "include" });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (me?.user_id) {
+          effectiveUserId = me.user_id;
+        }
+      }
+    } catch {
+      // 未登录时忽略，继续用入参/生成的 id
+    }
+
     const profile: UserProfile = {
       ...getInitialProfile(),
-      user_id: userId || createId("user"),
+      user_id: effectiveUserId,
       user_name: userName,
       team_id: teamId,
     };
@@ -176,7 +183,7 @@ export const useStore = create<StoreState>((set, get) => ({
         }),
       });
       if (!profRes.ok) {
-        console.warn("joinTeam: profile 未持久化", profRes.status);
+        toast.warning("画像未保存", profRes.status === 401 ? "请先登录" : "请稍后重试");
       }
       // 同步写入 team_members 表（服务端会以 session 用户为准）
       const memRes = await fetch(`/api/teams/${teamId}/members`, {
@@ -188,10 +195,11 @@ export const useStore = create<StoreState>((set, get) => ({
         }),
       });
       if (!memRes.ok) {
-        console.warn("joinTeam: team_members 未写入", memRes.status);
+        toast.warning("加入团队记录未保存", memRes.status === 401 ? "请先登录" : "请稍后重试");
       }
     } catch (e) {
       console.error("joinTeam db error:", e);
+      toast.error("加入团队失败", "网络错误，请重试");
     }
     set((state) => ({
       profiles: [profile, ...state.profiles.filter((p) => !(p.user_id === profile.user_id && p.team_id === profile.team_id))],
@@ -281,6 +289,7 @@ export const useStore = create<StoreState>((set, get) => ({
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         console.error("[saveProfile] failed", res.status, errText);
+        toast.error("画像保存失败", res.status === 401 ? "请先登录后再测评" : "请稍后重试");
       }
     } catch (e) {
       console.error("saveProfile db error:", e);
@@ -388,6 +397,7 @@ export const useStore = create<StoreState>((set, get) => ({
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         console.error("deleteTeam error response:", res.status, errText);
+        toast.error("操作失败", res.status === 401 ? "请先登录" : "请稍后重试");
         return null;
       }
       const data = await res.json();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Menu, Lightbulb, UserCircle } from "lucide-react";
@@ -39,13 +39,22 @@ function ChatPageInner() {
   const userName = user?.name || searchParams.get("user") || "你";
   // 用临时 ID 兜底，确保未登录也能对话（保存会在服务端鉴权失败时被忽略，但不阻塞对话）
   const effectiveUserId = user?.user_id || `guest-${params.teamId}`;
+  const prevUserIdRef = useRef<string | null>(null);
 
+  // user_id 变化时（如登录/切号）重置对话状态，避免前后消息归属不一致
   useEffect(() => {
-    if (messages.length === 0 && params.teamId) {
+    if (!params.teamId) return;
+    if (prevUserIdRef.current !== effectiveUserId) {
+      prevUserIdRef.current = effectiveUserId;
+      // 清空旧用户的消息和测评态，重新开始
+      useStore.setState({ messages: [], currentProfile: null });
+      setProgress(0);
+      setAssessmentDone(false);
+      setHighlights([]);
       startConversation(userName, effectiveUserId, params.teamId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, params.teamId]);
+  }, [effectiveUserId, params.teamId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

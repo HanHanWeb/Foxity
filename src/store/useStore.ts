@@ -195,8 +195,8 @@ export const useStore = create<StoreState>((set, get) => ({
     const messages = [...get().messages, msg];
     set({ messages });
     const profile = get().currentProfile;
-    console.log("[addMessage] role:", msg.role, "profile?.user_id:", profile?.user_id, "team_id:", profile?.team_id);
-    if (profile?.user_id && profile?.team_id) {
+    const isGuest = profile?.user_id?.startsWith("guest-");
+    if (profile?.user_id && profile?.team_id && !isGuest) {
       fetch("/api/chat-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,9 +207,9 @@ export const useStore = create<StoreState>((set, get) => ({
           content: msg.content,
           emotion: msg.emotion ?? msg.expression,
         }),
-      }).catch((e) => console.error("save chat-history error:", e));
-    } else {
-      console.warn("[addMessage] 跳过保存：currentProfile 或 user_id/team_id 为空", profile);
+      }).catch((e) => console.error("[addMessage] save chat-history error:", e));
+    } else if (isGuest) {
+      console.log("[addMessage] 访客模式，跳过保存（请登录后对话以保存记录）");
     }
   },
 

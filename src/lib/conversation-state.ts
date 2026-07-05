@@ -60,6 +60,7 @@ export interface ConversationState {
   anchorTopic: string | null;
   lastDimension: HardSkillDimension | null;
   selfAssessments: SelfAssessmentSignal[];
+  consecutiveNoInfo: number; // 连续无新信息的轮数
 }
 
 // ===== 本轮规划决策 =====
@@ -100,6 +101,7 @@ function createInitialState(): ConversationState {
     anchorTopic: null,
     lastDimension: null,
     selfAssessments: [],
+    consecutiveNoInfo: 0,
   };
 }
 
@@ -206,6 +208,17 @@ export function buildConversationState(
     }
   }
 
+  // 计算连续无新信息的轮数（从最新记录倒推）
+  let noInfoCount = 0;
+  for (let i = records.length - 1; i >= 0; i--) {
+    if (records[i].has_new_info === false) {
+      noInfoCount++;
+    } else {
+      break; // 遇到有新信息的就停
+    }
+  }
+  state.consecutiveNoInfo = noInfoCount;
+
   return state;
 }
 
@@ -240,6 +253,9 @@ function checkShouldWrap(state: ConversationState): boolean {
   // 第 12 轮强制收尾
   if (state.round >= state.maxRounds) return true;
 
+  // 连续 3 轮没获得任何有效新信息 → 再聊就是尬聊了
+  if (state.consecutiveNoInfo >= 3) return true;
+
   // 全部 5 维都有至少 1 条证据（覆盖即可，不要求 L3+）
   const allCovered = HARD_SKILL_DIMENSIONS.every(
     (dim) => state.dimensionCoverage[dim].evidenceCount >= 1
@@ -252,6 +268,15 @@ function checkShouldWrap(state: ConversationState): boolean {
 // 选择本轮主攻维度
 function selectTargetDimension(state: ConversationState): HardSkillDimension {
   const { dimensionCoverage, lastDimension } = state;
+
+  // 0. 连续2轮无新信息 → 强制切换到完全不同的维度（避免钻牛角尖）
+  if (state.consecutiveNoInfo >= 2 && lastDimension) {
+    // 选一个和上一轮不同的、0证据优先的维度
+    const otherZeroDims = HARD_SKILL_DIMENSIONS.filter(
+      (dim) => dim !== lastDimension && dimensionCoverage[dim].evidenceCount === 0
+    );
+    if (otherZeroDims.length > 0) return otherZeroDims[0];
+  }
 
   // 1. 0 证据的维度优先
   const zeroEvidenceDims = HARD_SKILL_DIMENSIONS.filter(
@@ -374,8 +399,7 @@ export function formatStateForPrompt(state: ConversationState, plan: RoundPlan):
 ${dimStatus}
 - 上一轮维度：${state.lastDimension ? HARD_SKILL_LABELS[state.lastDimension] : "无"}
 - 锚定话题：${state.anchorTopic || "尚未确定"}
-
-【本轮任务】
+${state.consecutiveNoInfo >= 2 ? `- ⚠️ 连续${state.consecutiveNoInfo}轮无新信息，本轮强制切换维度\n` : ""}【本轮任务】
 主攻维度：${HARD_SKILL_LABELS[plan.targetDimension]}（${state.dimensionCoverage[plan.targetDimension].evidenceCount}条证据，${state.dimensionCoverage[plan.targetDimension].highestLevel}）
 转场方式：${transLabel[plan.transitionStyle]}
 问题类型：${qTypeLabel[plan.questionType]}

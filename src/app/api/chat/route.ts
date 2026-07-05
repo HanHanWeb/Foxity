@@ -515,22 +515,31 @@ export async function POST(req: Request) {
         // 6. 软实力行为信号融合（如果有本轮行为信号）
         if (roundData && roundData.behavior_signals && scoreData.soft_skills) {
           try {
-            const softSkillBehavior = {} as Record<string, number>;
-            // 从行为信号推导软实力初步分
+            // 按维度分组行为信号，极性正负影响方向，强度0-1映射到0-5分偏移
             const behaviorGroups: Record<string, number[]> = {};
+            const signalCounts: Record<string, number> = {};
             for (const sig of roundData.behavior_signals) {
               if (!behaviorGroups[sig.dimension]) {
                 behaviorGroups[sig.dimension] = [];
+                signalCounts[sig.dimension] = 0;
               }
-              behaviorGroups[sig.dimension].push(sig.intensity);
+              const val = sig.polarity === 'positive' ? sig.strength
+                : sig.polarity === 'negative' ? -sig.strength : 0;
+              behaviorGroups[sig.dimension].push(val * 5); // 基准分5 + 偏移
+              signalCounts[sig.dimension]++;
             }
-            for (const [dim, intensities] of Object.entries(behaviorGroups)) {
-              softSkillBehavior[dim] = Math.round(
-                intensities.reduce((a, b) => a + b, 0) / intensities.length * 10
-              ) / 10;
+            // 逐维度融合：内容证据为主，行为信号为辅
+            for (const dim of Object.keys(scoreData.soft_skills)) {
+              const intensities = behaviorGroups[dim];
+              if (intensities && intensities.length > 0) {
+                const avgOffset = intensities.reduce((a, b) => a + b, 0) / intensities.length;
+                const behaviorScore = Math.max(0, Math.min(10, 5 + avgOffset));
+                scoreData.soft_skills[dim] = fuseSoftSkillScores(
+                  scoreData.soft_skills[dim],
+                  { score: behaviorScore, signal_count: signalCounts[dim] }
+                );
+              }
             }
-            // 融合：内容证据70% + 行为信号30%
-            scoreData = fuseSoftSkillScores(scoreData, softSkillBehavior, 0.3);
           } catch (e) {
             console.error("[chat] soft skill fusion error:", e);
           }

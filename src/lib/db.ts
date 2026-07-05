@@ -19,7 +19,7 @@ export function getDb(): Client {
 
 // 期望的表结构定义（用于校验已存在的表是否匹配）
 const EXPECTED_COLUMNS: Record<string, string[]> = {
-  teams: ["team_id", "team_name", "competition_type", "organizer_name", "owner_user_id", "created_at"],
+  teams: ["team_id", "team_name", "team_emoji", "competition_type", "organizer_name", "owner_user_id", "created_at"],
   profiles: ["user_id", "user_name", "team_id", "timestamp", "data"],
   chat_history: ["id", "user_id", "team_id", "role", "content", "emotion", "created_at"],
   users: ["user_id", "display_name", "password_hash", "email", "created_at"],
@@ -55,6 +55,7 @@ async function ensureTableSchema(db: Client, table: string, createSql: string) {
 const CREATE_TEAMS = `CREATE TABLE IF NOT EXISTS teams (
   team_id TEXT PRIMARY KEY,
   team_name TEXT NOT NULL,
+  team_emoji TEXT NOT NULL DEFAULT '',
   competition_type TEXT NOT NULL DEFAULT '默认',
   organizer_name TEXT NOT NULL DEFAULT '',
   owner_user_id TEXT,
@@ -140,6 +141,16 @@ export async function initDb() {
   } catch (e: any) {
     if (!/duplicate column/i.test(e?.message || "")) {
       console.warn("[db] teams.owner_user_id migration skipped:", e?.message);
+    }
+  }
+
+  // 迁移：为已存在的 teams 表补齐 team_emoji 列
+  try {
+    await db.execute(`ALTER TABLE teams ADD COLUMN team_emoji TEXT NOT NULL DEFAULT ''`);
+    console.log("[db] teams.team_emoji column added");
+  } catch (e: any) {
+    if (!/duplicate column/i.test(e?.message || "")) {
+      console.warn("[db] teams.team_emoji migration skipped:", e?.message);
     }
   }
 }

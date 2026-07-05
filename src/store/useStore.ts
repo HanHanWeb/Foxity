@@ -24,7 +24,7 @@ interface StoreState {
   assessmentState: AssessmentState;
   hydrate: () => void;
   loadTeam: (teamId: string) => Promise<void>;
-  createTeam: (name: string, type: string, organizer: string) => Promise<string>;
+  createTeam: (name: string, type: string, organizer: string, emoji?: string) => Promise<string>;
   joinTeam: (teamId: string, userName: string) => Promise<UserProfile>;
   addMessage: (msg: ChatMessage) => void;
   markEvent: (event: string) => void;
@@ -101,7 +101,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  createTeam: async (name, type, organizer) => {
+  createTeam: async (name, type, organizer, emoji) => {
     let teamId = createTeamCode();
     try {
       let unique = false;
@@ -119,6 +119,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const team: Team = {
       team_id: teamId,
       team_name: name,
+      team_emoji: emoji || "",
       competition_type: type,
       organizer_name: organizer,
       members: [],

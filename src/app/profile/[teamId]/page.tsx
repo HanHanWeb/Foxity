@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const mockProfile = useStore((state) => state.mockProfile);
   const currentTeam = useStore((state) => state.currentTeam);
   const [teamName, setTeamName] = useState<string>("团队测评");
+  const [teamEmoji, setTeamEmoji] = useState<string>("");
   const [dbProfile, setDbProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -84,11 +85,13 @@ export default function ProfilePage() {
   useEffect(() => {
     if (currentTeam?.team_id === params.teamId) {
       setTeamName(currentTeam.team_name);
+      setTeamEmoji(currentTeam.team_emoji || "");
     } else {
       fetch(`/api/teams/${params.teamId}`)
         .then((res) => res.ok ? res.json() : null)
         .then((team) => {
           if (team?.team_name) setTeamName(team.team_name);
+          if (team?.team_emoji) setTeamEmoji(team.team_emoji);
         })
         .catch(() => {});
     }
@@ -190,7 +193,7 @@ export default function ProfilePage() {
           </div>
           <div className="mt-4 md:mt-0 md:pb-2">
             <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{data.user_name}</h1>
-            <p className="mt-1 text-sm text-fox-gray">{teamName}</p>
+            <p className="mt-1 text-sm text-fox-gray">{teamEmoji && <span className="mr-1">{teamEmoji}</span>}{teamName}</p>
             <p className="mt-2 max-w-md text-sm text-fox-navy/80">{data.overview_summary}</p>
           </div>
         </motion.div>

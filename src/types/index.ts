@@ -158,6 +158,7 @@ export interface LeaderSummary {
 export interface Team {
   team_id: string;
   team_name: string;
+  team_emoji?: string;
   competition_type: string;
   organizer_name: string;
   members: UserProfile[];

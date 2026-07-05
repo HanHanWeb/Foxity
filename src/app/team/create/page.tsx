@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Users, Loader2, Mail, X, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Users, Loader2, Mail, X, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useStore } from "@/store/useStore";
 import { CopyButton } from "@/components/CopyButton";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 export default function CreateTeamPage() {
   const router = useRouter();
@@ -18,6 +19,39 @@ export default function CreateTeamPage() {
   const createTeam = useStore((state) => state.createTeam);
 
   const [teamName, setTeamName] = useState("");
+  const [emojiIndex, setEmojiIndex] = useState(0);
+  const directionRef = useRef(0); // 1=向右切换, -1=向左切换
+  const EMOJI_LIST = ["✨", "🎉", "💡", "🏷️", "🎨", "🕹️", "🔥", "🌟", "🚀", "🌈", "🍀", "🌸", "☕", "🎵", "⚡", "🏔️", "🌊", "🦊"];
+  const teamEmoji = EMOJI_LIST[emojiIndex];
+  const visibleCount = 5; // 中间 + 左右各2
+  const half = Math.floor(visibleCount / 2);
+
+  // 点击两侧 emoji 滚动到该位置；点击中间不做事
+  const selectEmoji = (idx: number) => {
+    if (idx === emojiIndex) return;
+    const diff = getRelativePos(idx);
+    directionRef.current = diff > 0 ? 1 : -1;
+    setEmojiIndex(idx);
+  };
+
+  const goNext = () => {
+    directionRef.current = 1;
+    setEmojiIndex((emojiIndex + 1) % EMOJI_LIST.length);
+  };
+
+  const goPrev = () => {
+    directionRef.current = -1;
+    setEmojiIndex((emojiIndex - 1 + EMOJI_LIST.length) % EMOJI_LIST.length);
+  };
+
+  const getRelativePos = (i: number) => {
+    let diff = i - emojiIndex;
+    const len = EMOJI_LIST.length;
+    // 环绕
+    if (diff > len / 2) diff -= len;
+    if (diff < -len / 2) diff += len;
+    return diff;
+  };
   const [teamCode, setTeamCode] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +76,7 @@ export default function CreateTeamPage() {
     if (!teamName.trim() || creating) return;
     setCreating(true);
     try {
-      const code = await createTeam(teamName.trim(), "默认", organizerName.trim());
+      const code = await createTeam(teamName.trim(), "默认", organizerName.trim(), teamEmoji);
       setTeamCode(code);
     } catch (e) {
       setError("生成团队码失败，请重试");
@@ -139,6 +173,60 @@ export default function CreateTeamPage() {
           <CardContent>
             {!teamCode ? (
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>团队标识</Label>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-fox-gray-light bg-white text-fox-gray hover:text-fox-navy"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    <div className="relative flex h-24 items-center justify-center overflow-hidden" style={{ width: "260px" }}>
+                      {EMOJI_LIST.map((emoji, i) => {
+                        const pos = getRelativePos(i);
+                        if (Math.abs(pos) > half) return null;
+                        const isActive = pos === 0;
+                        // 新进入的边缘 emoji，根据切换方向从对应侧滑入
+                        const isEntering = Math.abs(pos) === half;
+                        return (
+                          <motion.button
+                            key={emoji}
+                            type="button"
+                            onClick={() => selectEmoji(i)}
+                            initial={isEntering ? { x: pos * 48 + directionRef.current * 80, opacity: 0 } : false}
+                            animate={{
+                              x: pos * 48,
+                              scale: isActive ? 1 : 0.7 - Math.abs(pos) * 0.08,
+                              opacity: isActive ? 1 : 0.4 - Math.abs(pos) * 0.12,
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            className={cn(
+                              "absolute flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl",
+                              isActive
+                                ? "border-fox-orange bg-fox-orange/10"
+                                : "border-fox-gray-light bg-white"
+                            )}
+                            style={{ zIndex: isActive ? 10 : 5 - Math.abs(pos) }}
+                          >
+                            {emoji}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-fox-gray-light bg-white text-fox-gray hover:text-fox-navy"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="teamName">团队名称</Label>
                   <Input

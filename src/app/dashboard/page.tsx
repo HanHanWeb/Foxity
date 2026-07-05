@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 interface MyTeam {
   team_id: string;
   team_name: string;
+  team_emoji?: string;
   competition_type: string;
   organizer_name: string;
   created_at: string;
@@ -98,6 +99,7 @@ export default function DashboardPage() {
         <CardContent className="flex items-center justify-between p-5">
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold text-fox-navy">
+              {team.team_emoji && <span className="mr-1.5">{team.team_emoji}</span>}
               {team.team_name}
             </h3>
             <div className="mt-1 flex items-center gap-3 text-xs text-fox-gray">

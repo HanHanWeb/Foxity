@@ -12,7 +12,7 @@ export async function GET(
     const db = getDb();
 
     const teamResult = await db.execute({
-      sql: `SELECT team_id, team_name, competition_type, organizer_name, owner_user_id, created_at
+      sql: `SELECT team_id, team_name, team_emoji, competition_type, organizer_name, owner_user_id, created_at
             FROM teams WHERE team_id = ?`,
       args: [teamId],
     });
@@ -36,6 +36,7 @@ export async function GET(
     const team = {
       team_id: teamRow.team_id,
       team_name: teamRow.team_name,
+      team_emoji: teamRow.team_emoji,
       competition_type: teamRow.competition_type,
       organizer_name: teamRow.organizer_name,
       created_at: teamRow.created_at,

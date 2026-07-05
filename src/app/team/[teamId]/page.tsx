@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Users, Share2, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { ArrowLeft, Users, Share2, Eye, EyeOff, Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,19 +24,26 @@ export default function TeamDashboardPage() {
   const [showRealNames, setShowRealNames] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [shared, setShared] = useState(false);
+  const [loadingTeam, setLoadingTeam] = useState(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    loadTeam(params.teamId);
+    let cancelled = false;
+    setLoadingTeam(true);
+    loadTeam(params.teamId).finally(() => {
+      if (!cancelled) setLoadingTeam(false);
+    });
+    return () => { cancelled = true; };
   }, [params.teamId, loadTeam]);
 
-  const team = teams.find((item) => item.team_id === params.teamId) ?? mockTeam;
-  const teamProfiles = profiles.length > 0
+  const realTeam = teams.find((item) => item.team_id === params.teamId);
+  const team = loadingTeam ? null : (realTeam ?? mockTeam);
+  const teamProfiles = !loadingTeam && realTeam
     ? profiles.filter((p) => p.team_id === params.teamId)
-    : mockProfiles;
+    : (!loadingTeam ? mockProfiles : []);
 
   useEffect(() => {
     if (team?.team_name) {
@@ -70,6 +77,57 @@ export default function TeamDashboardPage() {
     user_name: showRealNames ? p.user_name : `成员${idx + 1}`,
   }));
 
+  // 基于真实数据计算各维度均分、互补度、风险
+  const completedProfiles = displayProfiles.filter(
+    (p) => (Object.values(p.abilities || {}) as any[]).filter((a) => a.verification_status !== "untested").length >= 3
+  );
+
+  const dimStats = hardSkillMeta.map((dim) => {
+    const scores = completedProfiles
+      .map((p) => p.abilities?.[dim.key]?.score)
+      .filter((s): s is number => typeof s === "number" && s > 0);
+    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const max = scores.length > 0 ? Math.max(...scores) : 0;
+    const highCount = scores.filter((s) => s >= 75).length;
+    return { key: dim.key, name: dim.name, avg, max, highCount, total: scores.length };
+  });
+
+  // 互补度：维度覆盖（有几个维度有人>=70）+ 分数分散度
+  const coveredDims = dimStats.filter((d) => d.max >= 70).length;
+  const dimVariance = (() => {
+    const avgs = dimStats.map((d) => d.avg).filter((a) => a > 0);
+    if (avgs.length < 2) return 0;
+    const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
+    return Math.sqrt(avgs.reduce((sum, a) => sum + (a - mean) ** 2, 0) / avgs.length);
+  })();
+  const complementarity = Math.min(
+    95,
+    Math.round(coveredDims * 12 + Math.min(dimVariance * 2, 35) + (completedProfiles.length > 1 ? 10 : 0))
+  );
+
+  // 风险提示：均分低于 50 且没人拿到高分
+  const risks = dimStats
+    .filter((d) => d.avg > 0 && d.avg < 55 && d.highCount === 0)
+    .map((d) => ({
+      area: d.name,
+      level: d.avg < 40 ? "high" as const : "medium" as const,
+      desc:
+        d.avg < 40
+          ? `全队该维度均分仅 ${d.avg.toFixed(0)}，无人达到 75 分以上，存在明显能力短板。`
+          : `全队该维度均分 ${d.avg.toFixed(0)}，整体偏弱，建议加强或补充相关背景成员。`,
+    }));
+
+  if (loadingTeam || !team) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-fox-cream/30">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-fox-orange" />
+          <p className="text-sm text-fox-gray">加载团队数据...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-fox-cream/30 pb-12">
       <header className="border-b border-fox-gray-light bg-white">
@@ -100,7 +158,10 @@ export default function TeamDashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">{team.team_name}</h1>
+              <h1 className="text-2xl font-bold text-fox-navy md:text-3xl">
+                {team.team_emoji && <span className="mr-2">{team.team_emoji}</span>}
+                {team.team_name}
+              </h1>
               <p className="mt-1 text-sm text-fox-gray">
                 团队码：<span className="font-mono font-bold text-fox-navy">{team.team_id}</span>
               </p>
@@ -210,14 +271,22 @@ export default function TeamDashboardPage() {
                   <div className="flex flex-col items-center justify-center py-4">
                     <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-fox-orange/10">
                       <span className="text-3xl font-bold text-fox-orange">
-                        {Math.min(92, 70 + displayProfiles.length * 4)}%
+                        {completedProfiles.length === 0 ? "--" : `${complementarity}%`}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm font-semibold text-fox-navy">互补度良好</p>
+                    <p className="mt-3 text-sm font-semibold text-fox-navy">
+                      {completedProfiles.length === 0
+                        ? "暂无数据"
+                        : complementarity >= 80
+                        ? "互补度优秀"
+                        : complementarity >= 60
+                        ? "互补度良好"
+                        : "互补度待提升"}
+                    </p>
                     <p className="mt-1 text-center text-xs text-fox-gray">
-                      团队成员能力各有侧重，
-                      <br />
-                      形成了较好的互补关系。
+                      {completedProfiles.length === 0
+                        ? "等待队员完成测评后生成分析"
+                        : `已有 ${completedProfiles.length} 人完成测评，覆盖 ${coveredDims} 个核心维度`}
                     </p>
                   </div>
                 </CardContent>
@@ -230,35 +299,50 @@ export default function TeamDashboardPage() {
                 <CardDescription>团队可能存在的能力盲区</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {[
-                  { area: "商业/财务", level: "high", desc: "全队没有人在财务维度拿到高分，建议补充相关背景成员或重点提升。" },
-                  { area: "设计能力", level: "medium", desc: "设计能力整体中等偏下，可能影响产品原型的美观度和用户体验。" },
-                ].map((risk, idx) => (
-                  <div key={idx} className="flex gap-3 rounded-xl border border-fox-gray-light bg-white p-4">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full",
-                        risk.level === "high" ? "bg-fox-orange/20 text-fox-orange" : "bg-fox-yellow/20 text-fox-yellow-dark"
-                      )}
-                    >
-                      ⚠️
+                {completedProfiles.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-fox-gray">
+                    等待队员完成测评后生成风险分析
+                  </p>
+                ) : risks.length === 0 ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-fox-mint/30 bg-fox-mint/5 p-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-fox-mint/15 text-lg">
+                      ✅
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-fox-navy">{risk.area}能力不足</h4>
-                        <Badge
-                          className={cn(
-                            "border-transparent",
-                            risk.level === "high" ? "bg-fox-coral/15 text-fox-coral" : "bg-fox-yellow/20 text-fox-navy"
-                          )}
-                        >
-                          {risk.level === "high" ? "高风险" : "中风险"}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-sm text-fox-gray">{risk.desc}</p>
+                      <h4 className="font-semibold text-fox-navy">暂无明显风险</h4>
+                      <p className="mt-1 text-sm text-fox-gray">
+                        各维度能力覆盖均衡，未发现明显短板。
+                      </p>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  risks.map((risk, idx) => (
+                    <div key={idx} className="flex gap-3 rounded-xl border border-fox-gray-light bg-white p-4">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full",
+                          risk.level === "high" ? "bg-fox-orange/20 text-fox-orange" : "bg-fox-yellow/20 text-fox-yellow-dark"
+                        )}
+                      >
+                        ⚠️
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-fox-navy">{risk.area}能力不足</h4>
+                          <Badge
+                            className={cn(
+                              "border-transparent",
+                              risk.level === "high" ? "bg-fox-coral/15 text-fox-coral" : "bg-fox-yellow/20 text-fox-navy"
+                            )}
+                          >
+                            {risk.level === "high" ? "高风险" : "中风险"}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-fox-gray">{risk.desc}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>

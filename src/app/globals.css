@@ -143,7 +143,34 @@
   }
   html {
     @apply font-sans;
+    /* 始终预留滚动条空间，避免长页面出现滚动条时布局偏移 */
+    scrollbar-gutter: stable;
   }
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-fox-gray-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fox-gray);
+}
+
+/* Firefox 滚动条 */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-fox-gray-light) transparent;
 }
 
 @layer utilities {

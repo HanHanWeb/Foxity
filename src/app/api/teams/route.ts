@@ -18,7 +18,7 @@ export async function GET() {
 
     // 我创建的团队（含成员数）
     const ownedRes = await db.execute({
-      sql: `SELECT t.team_id, t.team_name, t.competition_type, t.organizer_name, t.created_at,
+      sql: `SELECT t.team_id, t.team_name, t.team_emoji, t.competition_type, t.organizer_name, t.created_at,
                    (SELECT COUNT(*) FROM profiles p WHERE p.team_id = t.team_id) AS member_count
             FROM teams t WHERE t.owner_user_id = ?
             ORDER BY t.created_at DESC`,
@@ -27,6 +27,7 @@ export async function GET() {
     const owned = ownedRes.rows.map((row) => ({
       team_id: row.team_id,
       team_name: row.team_name,
+      team_emoji: row.team_emoji,
       competition_type: row.competition_type,
       organizer_name: row.organizer_name,
       created_at: row.created_at,
@@ -35,7 +36,7 @@ export async function GET() {
 
     // 我加入的团队（通过 profiles 表关联，排除自己创建的）
     const joinedRes = await db.execute({
-      sql: `SELECT t.team_id, t.team_name, t.competition_type, t.organizer_name, t.created_at, p.timestamp AS joined_at,
+      sql: `SELECT t.team_id, t.team_name, t.team_emoji, t.competition_type, t.organizer_name, t.created_at, p.timestamp AS joined_at,
                    (SELECT COUNT(*) FROM profiles p2 WHERE p2.team_id = t.team_id) AS member_count
             FROM profiles p
             JOIN teams t ON p.team_id = t.team_id
@@ -46,6 +47,7 @@ export async function GET() {
     const joined = joinedRes.rows.map((row) => ({
       team_id: row.team_id,
       team_name: row.team_name,
+      team_emoji: row.team_emoji,
       competition_type: row.competition_type,
       organizer_name: row.organizer_name,
       created_at: row.created_at,
@@ -67,11 +69,12 @@ export async function POST(req: Request) {
   try {
     const userId = await getUserId();
     const body = await req.json();
-    let { team_name, competition_type, organizer_name } = body;
+    let { team_name, competition_type, organizer_name, team_emoji } = body;
     // 允许调用方传入 team_id（兼容前端 store 的查重流程），但优先服务端生成
     let team_id = typeof body.team_id === "string" ? body.team_id : "";
     competition_type = competition_type || "默认";
     organizer_name = organizer_name || "";
+    team_emoji = team_emoji || "";
     const owner_user_id = userId || body.owner_user_id || null;
     const created_at = new Date().toISOString();
 
@@ -110,14 +113,15 @@ export async function POST(req: Request) {
     }
 
     await db.execute({
-      sql: `INSERT INTO teams (team_id, team_name, competition_type, organizer_name, owner_user_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [team_id, team_name, competition_type, organizer_name, owner_user_id, created_at],
+      sql: `INSERT INTO teams (team_id, team_name, team_emoji, competition_type, organizer_name, owner_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [team_id, team_name, team_emoji, competition_type, organizer_name, owner_user_id, created_at],
     });
 
     return NextResponse.json({
       team_id,
       team_name,
+      team_emoji,
       competition_type,
       organizer_name,
       owner_user_id,

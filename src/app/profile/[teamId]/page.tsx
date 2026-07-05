@@ -67,17 +67,37 @@ export default function ProfilePage() {
 
   // 从数据库加载用户画像（按 team_id 隔离）
   useEffect(() => {
-    if (!user?.user_id) return;
-    fetch(`/api/profiles/${user.user_id}?team_id=${params.teamId}`)
-      .then((res) => res.ok ? res.json() : null)
+    if (authLoading) return;
+    if (!user?.user_id) {
+      // 未登录：清掉旧的 dbProfile，直接结束加载
+      setDbProfile(null);
+      setLoadingProfile(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingProfile(true);
+    fetch(`/api/profiles/${user.user_id}?team_id=${params.teamId}`, {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
       .then((result) => {
+        if (cancelled) return;
         if (result?.data) {
           setDbProfile(result.data as UserProfile);
+        } else {
+          setDbProfile(null);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadingProfile(false));
-  }, [user?.user_id, params.teamId]);
+      .catch((e) => {
+        console.error("[profile] fetch dbProfile error:", e);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProfile(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.user_id, params.teamId, authLoading]);
 
   // 加载当前团队名称
   useEffect(() => {
@@ -192,12 +212,29 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-4 px-6 text-center">
             <img src="/fox.png" alt="Foxity" width={80} height={80} className="rounded-2xl opacity-60" />
             <div>
-              <p className="text-lg font-semibold text-fox-navy">还没有画像数据</p>
-              <p className="mt-2 text-sm text-fox-gray">完成一次测评对话后，你的能力画像会显示在这里。</p>
+              <p className="text-lg font-semibold text-fox-navy">
+                {user ? "还没有画像数据" : "请先登录后查看画像"}
+              </p>
+              <p className="mt-2 text-sm text-fox-gray">
+                {user
+                  ? "完成一次测评对话后，你的能力画像会显示在这里。"
+                  : "登录后完成测评对话，你的能力画像会保存在你的账号里。"}
+              </p>
             </div>
-            <Button onClick={() => router.push(`/chat/${params.teamId}`)} className="mt-2">
-              开始测评
-            </Button>
+            {user ? (
+              <Button onClick={() => router.push(`/chat/${params.teamId}`)} className="mt-2">
+                开始测评
+              </Button>
+            ) : (
+              <Button
+                onClick={() =>
+                  router.push(`/auth?redirect=/profile/${params.teamId}`)
+                }
+                className="mt-2"
+              >
+                去登录
+              </Button>
+            )}
           </div>
         </div>
       ) : data && (

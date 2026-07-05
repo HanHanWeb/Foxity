@@ -23,18 +23,33 @@ export async function GET(
 
     const teamRow = teamResult.rows[0];
 
-    // 权限校验：只有创建者（队长）能查看完整看板
+    // 权限校验：队长 或 team_members 里的成员 都可访问看板
     // owner 为 null（历史无主团队）时，允许已登录用户查看
     const userId = await getUserId();
     const ownerId = teamRow.owner_user_id as string | null;
     if (!userId) {
       return NextResponse.json({ error: "请先登录" }, { status: 401 });
     }
-    if (ownerId !== null && ownerId !== userId) {
-      return NextResponse.json(
-        { error: "无权查看，只有队长可以访问团队看板" },
-        { status: 403 }
-      );
+    const isOwner = ownerId === userId || ownerId === null;
+    if (!isOwner) {
+      // 校验是否为团队成员
+      const memberCheck = await db.execute({
+        sql: `SELECT 1 FROM team_members WHERE team_id = ? AND user_id = ? LIMIT 1`,
+        args: [teamId, userId],
+      });
+      // profiles 表也算成员关系（历史数据兼容）
+      const profileCheck = memberCheck.rows.length === 0
+        ? await db.execute({
+            sql: `SELECT 1 FROM profiles WHERE team_id = ? AND user_id = ? LIMIT 1`,
+            args: [teamId, userId],
+          })
+        : { rows: [1] };
+      if (memberCheck.rows.length === 0 && profileCheck.rows.length === 0) {
+        return NextResponse.json(
+          { error: "无权访问，你不是该团队成员" },
+          { status: 403 }
+        );
+      }
     }
 
     const team = {
@@ -123,7 +138,6 @@ export async function DELETE(
     }
 
     const ownerId = teamRes.rows[0].owner_user_id as string | null;
-    console.log("[DELETE team] teamId:", teamId, "userId:", userId, "ownerId:", ownerId);
 
     // 权限判断：owner 匹配，或 owner 为 null（历史无主团队）允许已登录用户删除
     const isOwner = ownerId === userId;

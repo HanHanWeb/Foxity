@@ -9,8 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { AbilityRadar } from "@/components/AbilityRadar";
 import { useStore } from "@/store/useStore";
-import { mockProfiles } from "@/mock/data";
-import { hardSkillLabels, softSkillLabels, allSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType } from "@/types";
+import { hardSkillLabels, softSkillLabels, allSkillLabels, type LeaderSummary, type LeaderSkillAssessment, type ChatMessage as ChatMessageType, type UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 
 const statusConfig = {
@@ -29,10 +28,36 @@ export default function MemberSummaryPage() {
   const [error, setError] = useState<string | null>(null);
   const [showChatHistory, setShowChatHistory] = useState(false);
 
-  const profile = useMemo(() => {
-    const allProfiles = profiles.length > 0 ? profiles : mockProfiles;
-    return allProfiles.find((p) => p.user_id === params.userId) ?? allProfiles[0];
-  }, [profiles, params.userId]);
+  const profileFromStore = useMemo(() => {
+    return profiles.find((p) => p.user_id === params.userId && p.team_id === params.teamId) ?? null;
+  }, [profiles, params.userId, params.teamId]);
+
+  // store 里没有时，从 API 兜底拉一份（例如直接从外部链接进入本页）
+  const [fallbackProfile, setFallbackProfile] = useState<UserProfile | null>(null);
+  useEffect(() => {
+    if (profileFromStore) return;
+    let cancelled = false;
+    fetch(`/api/profiles/${params.userId}?team_id=${params.teamId}`, {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((result) => {
+        if (cancelled || !result) return;
+        setFallbackProfile({
+          user_id: result.user_id,
+          user_name: result.user_name,
+          team_id: result.team_id,
+          timestamp: result.timestamp,
+          ...(result.data || {}),
+        } as UserProfile);
+      })
+      .catch((e) => console.warn("[member-detail] fallback profile fetch failed:", e));
+    return () => {
+      cancelled = true;
+    };
+  }, [profileFromStore, params.userId, params.teamId]);
+
+  const profile = profileFromStore ?? fallbackProfile;
 
   const [chatHistory, setChatHistory] = useState<ChatMessageType[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -41,11 +66,9 @@ export default function MemberSummaryPage() {
     const loadChatHistory = async () => {
       try {
         const url = `/api/chat-history/${params.userId}?team_id=${params.teamId}`;
-        console.log("[member-detail] fetching:", url, "userId:", params.userId, "teamId:", params.teamId);
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          console.log("[member-detail] chat-history response count:", data?.length, data);
           setChatHistory(
             (data as any[]).map((m) => ({
               role: m.role,
@@ -125,7 +148,7 @@ export default function MemberSummaryPage() {
   const chatStats = useMemo(() => {
     if (chatHistory.length === 0) return null;
     const userMsgs = chatHistory.filter((m) => m.role === "user");
-    const foxMsgs = chatHistory.filter((m) => m.role === "ai");
+    const foxMsgs = chatHistory.filter((m) => m.role === "fox" || m.role === "ai");
     const totalChars = chatHistory.reduce((sum, m) => sum + (m.content?.length || 0), 0);
     const userChars = userMsgs.reduce((sum, m) => sum + (m.content?.length || 0), 0);
 

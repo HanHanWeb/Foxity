@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { initialAssessmentState, mockProfiles, mockTeam } from "@/mock/data";
+import { initialAssessmentState } from "@/mock/data";
 import type {
   HardSkillKey,
   AssessmentState,
@@ -12,14 +12,13 @@ import type {
   UserProfile,
   V2AssessmentData,
 } from "@/types";
-import { createId, createTeamCode } from "@/lib/utils";
+import { createId } from "@/lib/utils";
 
 interface StoreState {
   currentTeam: Team | null;
   teams: Team[];
   profiles: UserProfile[];
   currentProfile: UserProfile | null;
-  mockProfile: UserProfile;
   messages: ChatMessage[];
   assessmentState: AssessmentState;
   hydrate: () => void;
@@ -48,8 +47,8 @@ function getInitialProfile(): UserProfile {
   return {
     user_id: createId("user"),
     user_name: "你",
-    team_id: "FOX3A7",
-    team_name: "挑战杯-智慧农业项目组",
+    team_id: "",
+    team_name: "",
     timestamp: new Date().toISOString(),
     core_positioning: "待测评",
     overview_summary: "完成测评后，Foxity 会为你生成完整的个人画像。",
@@ -74,21 +73,24 @@ const hardSkillKeyMap: Record<string, HardSkillKey> = {
 };
 
 export const useStore = create<StoreState>((set, get) => ({
-  currentTeam: mockTeam,
-  teams: [mockTeam],
-  profiles: mockProfiles,
+  currentTeam: null,
+  teams: [],
+  profiles: [],
   currentUserRole: null,
   currentUserId: null,
   currentProfile: null,
-  mockProfile: mockProfiles[0],
   messages: [],
   assessmentState: initialAssessmentState,
 
   hydrate: () => {
+    // 保留：某些页面挂载时可以显式重置内存状态到干净初值
     set({
-      teams: [mockTeam],
-      profiles: mockProfiles,
-      currentTeam: mockTeam,
+      teams: [],
+      profiles: [],
+      currentTeam: null,
+      currentProfile: null,
+      currentUserRole: null,
+      currentUserId: null,
     });
   },
 
@@ -101,57 +103,57 @@ export const useStore = create<StoreState>((set, get) => ({
       }
       const data = await res.json();
       const team: Team = data;
-      console.log("[loadTeam] members count:", team.members?.length, "role:", data.currentUserRole);
-      set((state) => ({
-        currentTeam: team,
-        teams: state.teams.some((t) => t.team_id === team.team_id)
-          ? state.teams.map((t) => (t.team_id === team.team_id ? team : t))
-          : [...state.teams, team],
-        // members 为空时不要回退 mock，否则页面永远显示假数据
-        profiles: team.members.length > 0 ? team.members : [],
-        currentUserRole: (data.currentUserRole as "leader" | "member") || null,
-        currentUserId: data.currentUserId || null,
-      }));
+      set((state) => {
+        // 只替换当前团队的 profiles，保留其他团队的
+        const otherProfiles = state.profiles.filter((p) => p.team_id !== team.team_id);
+        return {
+          currentTeam: team,
+          teams: state.teams.some((t) => t.team_id === team.team_id)
+            ? state.teams.map((t) => (t.team_id === team.team_id ? team : t))
+            : [...state.teams, team],
+          profiles: [...otherProfiles, ...(team.members || [])],
+          currentUserRole: (data.currentUserRole as "leader" | "member") || null,
+          currentUserId: data.currentUserId || null,
+        };
+      });
     } catch (e) {
       console.error("loadTeam error:", e);
     }
   },
 
   createTeam: async (name, type, organizer, emoji) => {
-    let teamId = createTeamCode();
-    try {
-      let unique = false;
-      while (!unique) {
-        const res = await fetch(`/api/teams/${teamId}`);
-        if (res.status === 404) {
-          unique = true;
-        } else {
-          teamId = createTeamCode();
-        }
-      }
-    } catch (e) {
-      console.error("createTeam dedup error:", e);
+    // 服务端负责生成/校验 team_id，前端只把参数传过去
+    const res = await fetch("/api/teams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        team_name: name,
+        competition_type: type,
+        organizer_name: organizer,
+        team_emoji: emoji || "",
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error("createTeam api error:", res.status, errText);
+      throw new Error("创建团队失败");
     }
+    const data = await res.json();
     const team: Team = {
-      team_id: teamId,
-      team_name: name,
-      team_emoji: emoji || "",
-      competition_type: type,
-      organizer_name: organizer,
+      team_id: data.team_id,
+      team_name: data.team_name || name,
+      team_emoji: data.team_emoji || emoji || "",
+      competition_type: data.competition_type || type,
+      organizer_name: data.organizer_name || organizer,
       members: [],
-      created_at: new Date().toISOString(),
+      created_at: data.created_at || new Date().toISOString(),
     };
-    try {
-      await fetch("/api/teams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(team),
-      });
-    } catch (e) {
-      console.error("createTeam db error:", e);
-    }
-    set({ teams: [team, ...get().teams], currentTeam: team });
-    return teamId;
+    set((state) => ({
+      teams: [team, ...state.teams.filter((t) => t.team_id !== team.team_id)],
+      currentTeam: team,
+    }));
+    return team.team_id;
   },
 
   joinTeam: async (teamId, userName, userId) => {
@@ -162,9 +164,10 @@ export const useStore = create<StoreState>((set, get) => ({
       team_id: teamId,
     };
     try {
-      await fetch("/api/profiles", {
+      const profRes = await fetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           user_id: profile.user_id,
           user_name: profile.user_name,
@@ -172,22 +175,28 @@ export const useStore = create<StoreState>((set, get) => ({
           data: profile,
         }),
       });
-      // 同步写入 team_members 表
-      await fetch(`/api/teams/${teamId}/members`, {
+      if (!profRes.ok) {
+        console.warn("joinTeam: profile 未持久化", profRes.status);
+      }
+      // 同步写入 team_members 表（服务端会以 session 用户为准）
+      const memRes = await fetch(`/api/teams/${teamId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          user_id: profile.user_id,
           user_name: profile.user_name,
         }),
-      }).catch((e) => console.error("joinTeam team_members insert error:", e));
+      });
+      if (!memRes.ok) {
+        console.warn("joinTeam: team_members 未写入", memRes.status);
+      }
     } catch (e) {
       console.error("joinTeam db error:", e);
     }
-    set({
-      profiles: [profile, ...get().profiles],
+    set((state) => ({
+      profiles: [profile, ...state.profiles.filter((p) => !(p.user_id === profile.user_id && p.team_id === profile.team_id))],
       currentProfile: profile,
-    });
+    }));
     return profile;
   },
 
@@ -239,22 +248,46 @@ export const useStore = create<StoreState>((set, get) => ({
   saveProfile: async () => {
     const profile = get().currentProfile;
     if (!profile) return;
+
+    // 如果 currentProfile 是访客态的 user_id（guest 前缀），尝试用 session 用户覆盖
+    let userId = profile.user_id;
+    if (userId.startsWith("guest-")) {
+      try {
+        const meRes = await fetch("/api/auth/me", { credentials: "include" });
+        if (meRes.ok) {
+          const me = await meRes.json();
+          if (me?.user_id) {
+            userId = me.user_id;
+          }
+        }
+      } catch {
+        // 忽略：仍然尝试用原 user_id 保存，鉴权失败则跳过
+      }
+    }
+    const profileToSave = { ...profile, user_id: userId };
+
     try {
-      await fetch("/api/profiles", {
+      const res = await fetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          user_id: profile.user_id,
-          user_name: profile.user_name,
-          team_id: profile.team_id,
-          data: profile,
+          user_id: userId,
+          user_name: profileToSave.user_name,
+          team_id: profileToSave.team_id,
+          data: profileToSave,
         }),
       });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.error("[saveProfile] failed", res.status, errText);
+      }
     } catch (e) {
       console.error("saveProfile db error:", e);
     }
     set({
-      profiles: [profile, ...get().profiles.filter((p) => p.user_id !== profile.user_id)],
+      currentProfile: profileToSave,
+      profiles: [profileToSave, ...get().profiles.filter((p) => p.user_id !== profileToSave.user_id)],
     });
   },
 
@@ -351,22 +384,20 @@ export const useStore = create<StoreState>((set, get) => ({
 
   deleteTeam: async (teamId) => {
     try {
-      console.log("[deleteTeam] sending DELETE for", teamId);
       const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
-      console.log("[deleteTeam] response status:", res.status, "ok:", res.ok);
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("deleteTeam error response:", errText);
+        const errText = await res.text().catch(() => "");
+        console.error("deleteTeam error response:", res.status, errText);
         return null;
       }
       const data = await res.json();
-      console.log("[deleteTeam] response data:", data);
       const action = data.action as "deleted" | "left";
-      // 从内存中移除该团队及其成员画像
+      // 仅移除该团队及其成员画像；不要覆盖其他团队的 profiles
       set((state) => ({
         teams: state.teams.filter((t) => t.team_id !== teamId),
         profiles: state.profiles.filter((p) => p.team_id !== teamId),
         currentTeam: state.currentTeam?.team_id === teamId ? null : state.currentTeam,
+        currentUserRole: state.currentTeam?.team_id === teamId ? null : state.currentUserRole,
       }));
       return action;
     } catch (e) {

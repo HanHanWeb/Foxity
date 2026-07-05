@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/select";
 import { CopyButton } from "@/components/CopyButton";
 import { useStore } from "@/store/useStore";
-import { mockProfiles, mockTeam } from "@/mock/data";
 import type { HardSkillKey, UserProfile } from "@/types";
 import { hardSkillLabels, hardSkillMeta } from "@/types";
 import {
@@ -181,7 +180,6 @@ export default function TeamDashboardPage() {
   const teams = useStore((state) => state.teams);
   const profiles = useStore((state) => state.profiles);
   const loadTeam = useStore((state) => state.loadTeam);
-  const deleteTeam = useStore((state) => state.deleteTeam);
   const updateMemberPosition = useStore((state) => state.updateMemberPosition);
   const removeMember = useStore((state) => state.removeMember);
   const storeCurrentUserRole = useStore((state) => state.currentUserRole);
@@ -297,12 +295,34 @@ export default function TeamDashboardPage() {
   const handleDeleteTeam = async () => {
     if (deleting) return;
     setDeleting(true);
-    const action = await deleteTeam(params.teamId);
-    setDeleting(false);
+    // 先关闭 dialog、跳回控制台，再清理 store 状态
+    // 避免删除成功后本页因 team 变 null 短暂渲染 fallback UI 造成"黑屏"
     setShowDeleteDialog(false);
-    if (action === "deleted" || action === "left") {
-      router.push("/dashboard");
-    } else {
+    try {
+      const res = await fetch(`/api/teams/${params.teamId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setDeleting(false);
+        alert("删除失败，请检查网络或稍后重试");
+        return;
+      }
+      router.replace("/dashboard");
+      // 路由跳转后，异步清理 store（组件此时已卸载，不会再触发本页重渲染）
+      const data = await res.json().catch(() => ({}));
+      const state = useStore.getState();
+      useStore.setState({
+        teams: state.teams.filter((t) => t.team_id !== params.teamId),
+        profiles: state.profiles.filter((p) => p.team_id !== params.teamId),
+        currentTeam: state.currentTeam?.team_id === params.teamId ? null : state.currentTeam,
+        currentUserRole: state.currentTeam?.team_id === params.teamId ? null : state.currentUserRole,
+      });
+      // 未使用变量占位，避免 lint 警告
+      void data;
+    } catch (e) {
+      console.error("delete team error:", e);
+      setDeleting(false);
       alert("删除失败，请检查网络或稍后重试");
     }
   };

@@ -69,6 +69,7 @@ function ChatPageInner() {
       const aiMsg: ChatMessageType = {
         role: "fox",
         content: response.reply,
+        markup: response.markup,
         timestamp: Date.now(),
         emotion: response.emotion,
       };

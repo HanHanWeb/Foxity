@@ -28,6 +28,7 @@ export async function sendToAI(messages: ChatMessage[], userName?: string): Prom
 
     return {
       reply: data.reply,
+      markup: data.markup,
       emotion,
       content: data.content || data.reply,
       expression: emotion,

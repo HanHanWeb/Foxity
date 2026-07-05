@@ -444,11 +444,13 @@ export async function POST(req: Request) {
     const { messages, viewer_role } = await req.json();
 
     // 清理历史消息：过滤掉空内容
+    // Fox 消息优先使用 markup（含 [ROUND_DATA] 等标记），否则用 content（纯文本）
+    // 这样 buildConversationState 和评分引擎都能从历史 assistant 消息中解析出每轮的结构化数据
     const cleanedMessages = (messages || [])
       .filter((msg: any) => msg && typeof msg.content === "string" && msg.content.trim().length > 0)
       .map((msg: any) => ({
         role: msg.role === "fox" || msg.role === "ai" ? "assistant" : "user",
-        content: msg.content,
+        content: (msg.role === "fox" || msg.role === "ai") ? (msg.markup || msg.content) : msg.content,
       }));
 
     const isLeaderMode = viewer_role === "leader";
@@ -539,6 +541,16 @@ export async function POST(req: Request) {
     }
     // 从回复中移除亮点标记（用户不可见）
     const cleanReply = reply.replace(highlightRegex, "").trim();
+
+    // 重建带标记的原始内容（供下一轮 API 上下文使用）
+    const markupParts: string[] = [cleanReply];
+    if (highlights.length > 0) {
+      for (const h of highlights) markupParts.push(`[HIGHLIGHT]${h}[/HIGHLIGHT]`);
+    }
+    if (roundData) {
+      markupParts.push(`[ROUND_DATA]\n${JSON.stringify(roundData, null, 2)}\n[/ROUND_DATA]`);
+    }
+    const markup = markupParts.join("\n\n");
 
     // 情绪根据回复内容简单推断
     const inferEmotion = (text: string): string => {
@@ -632,8 +644,15 @@ export async function POST(req: Request) {
     // 维度覆盖度（用于前端进度展示）
     const dimensionsCovered = roundData?.dimensions_touched_this_round?.length || 0;
 
+    // 最终 markup：如果包含画像，把 [END_ASSESSMENT] 块也加回去
+    let finalMarkup = markup;
+    if (assessment) {
+      finalMarkup = `${markup}\n\n[END_ASSESSMENT]\n[ASSESSMENT_DATA]\n${JSON.stringify(assessment, null, 2)}\n[/ASSESSMENT_DATA]`;
+    }
+
     return NextResponse.json({
       reply: replyText,
+      markup: finalMarkup,
       emotion: inferEmotion(replyText),
       content: replyText,
       expression: inferEmotion(replyText),

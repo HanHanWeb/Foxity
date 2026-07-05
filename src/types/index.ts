@@ -190,7 +190,8 @@ export interface Team {
 export interface ChatMessage {
   id?: string;
   role: "fox" | "user" | "ai";
-  content: string;
+  content: string;            // 用户看到的纯文本（无标记）
+  markup?: string;            // Foxity 原始回复（含 [ROUND_DATA]/[HIGHLIGHT] 等标记），用于 API 上下文
   emotion?: Expression;
   expression?: Expression;
   timestamp: number | string;
@@ -213,6 +214,7 @@ export interface AssessmentState {
 
 export interface AIResponse {
   reply: string;              // 纯文本回复
+  markup?: string;            // 原始回复（含 [ROUND_DATA]/[HIGHLIGHT]/[END_ASSESSMENT] 等标记），用于下一轮 API 上下文
   emotion: Expression;
   content: string;
   expression: Expression;
